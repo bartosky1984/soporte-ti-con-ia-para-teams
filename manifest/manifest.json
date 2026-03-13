@@ -1,0 +1,42 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.13/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.13",
+  "version": "1.0.0",
+  "id": "57a02d53-73a4-4432-8438-661725555555",
+  "packageName": "com.example.teamstickets",
+  "developer": {
+    "name": "Developer Name",
+    "websiteUrl": "https://localhost:3978",
+    "privacyUrl": "https://localhost:3978/privacy",
+    "termsOfUseUrl": "https://localhost:3978/termsofuse"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "Support Tickets",
+    "full": "IT & General Services Support Tickets"
+  },
+  "description": {
+    "short": "Manage support tickets",
+    "full": "Create and manage IT and General Services support tickets directly within Teams."
+  },
+  "accentColor": "#6264A7",
+  "staticTabs": [
+    {
+      "entityId": "ticketsTab",
+      "name": "Tickets",
+      "contentUrl": "https://localhost:3978/tab/index.html",
+      "websiteUrl": "https://localhost:3978/tab/index.html",
+      "scopes": ["personal", "team"]
+    }
+  ],
+  "validDomains": [
+    "localhost"
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ]
+}

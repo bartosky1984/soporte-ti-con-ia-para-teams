@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
+:root {
+  --teams-purple: #6264A7;
+  --teams-purple-dark: #4B4D8F;
+  --teams-purple-light: #8B8CC7;
+  --teams-bg-light: #F3F2F1;
+  --teams-dark: #201F1F;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--teams-bg-light);
+  margin: 0;
+  padding: 0;
+  transition: all 0.3s ease;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Outfit', sans-serif;
+}
+
+/* Premium Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C8C6C4;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A19F9D;
+}
+
+/* Glassmorphism Classes */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Teams Brand Styling */
+.teams-shadow {
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.teams-card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.teams-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+/* Custom Gradients */
+.teams-gradient {
+  background: linear-gradient(135deg, var(--teams-purple) 0%, var(--teams-purple-dark) 100%);
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Soporte TI con IA para Teams",
+  "description": "Una aplicación de tickets de soporte para Microsoft Teams con integración de Gemini IA para clasificación inteligente, análisis de imágenes y asistencia automatizada.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
