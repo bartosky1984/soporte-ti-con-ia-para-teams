@@ -44,7 +44,34 @@ export const ticketService = {
         let tickets = data as Ticket[];
 
         if (currentUserId) {
-          tickets = tickets.map(t => ({ ...t, unreadCount: 0, hasMessages: false, messageCount: 0 }));
+          // Fetch counts and read status from Supabase
+          const [{ data: commentCounts }, { data: readStatuses }] = await Promise.all([
+            supabase.rpc('get_comment_counts'), // We'll need to create this RPC or use a different approach
+            supabase.from('ticket_reads').select('*').eq('userId', currentUserId)
+          ]);
+
+          // As RPC might not exist, let's use a more standard approach first
+          const { data: allComments } = await supabase.from('comments').select('ticketId, userId, timestamp');
+          
+          const readReceipts = (readStatuses || []).reduce((acc: any, curr: any) => {
+            acc[curr.ticketId] = new Date(curr.lastReadTime).getTime();
+            return acc;
+          }, {});
+
+          tickets = tickets.map(t => {
+            const ticketComments = (allComments || []).filter(c => c.ticketId === t.id);
+            const lastReadTime = readReceipts[t.id] || 0;
+            const unreadCount = ticketComments.filter(c => 
+              c.userId !== currentUserId && new Date(c.timestamp).getTime() > lastReadTime
+            ).length;
+            
+            return { 
+              ...t, 
+              unreadCount, 
+              hasMessages: ticketComments.length > 0, 
+              messageCount: ticketComments.length 
+            };
+          });
         }
         return tickets;
       } catch (e) {
@@ -157,13 +184,27 @@ export const ticketService = {
           .single();
 
         if (error) throw error;
+        const updatedTicket = data as Ticket;
         
+        // Notify owner if the person changing the status is not the owner
+        if (user && user.id !== updatedTicket.userId) {
+          try {
+            await notificationService.addNotification(
+              updatedTicket.userId,
+              id,
+              `El estado de tu ticket #${id} ha cambiado a: ${status}`
+            );
+          } catch (notifErr) {
+            console.error("Failed to send notification", notifErr);
+          }
+        }
+
         // Audit log
         if (user) {
           await ticketService.addAuditLog(id, user, 'STATUS_CHANGE', oldStatus || 'UNKNOWN', status);
         }
         
-        return data as Ticket;
+        return updatedTicket;
       } catch (e) {
         console.error("Supabase updateTicketStatus failed", e);
       }
@@ -214,7 +255,26 @@ export const ticketService = {
           .single();
 
         if (error) throw error;
-        return data as TicketComment;
+        const savedComment = data as TicketComment;
+
+        // Notify the other party
+        try {
+          const { data: ticket } = await supabase.from('tickets').select('*').eq('id', ticketId).single();
+          if (ticket) {
+            const recipientId = user.id === ticket.userId ? ticket.technicianId : ticket.userId;
+            if (recipientId) {
+              await notificationService.addNotification(
+                recipientId,
+                ticketId,
+                `${user.name} comentó en el ticket #${ticketId}: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`
+              );
+            }
+          }
+        } catch (notifErr) {
+          console.error("Failed to send notification", notifErr);
+        }
+
+        return savedComment;
       } catch (e) {
         console.error("Supabase addComment failed", e);
       }
@@ -257,7 +317,24 @@ export const ticketService = {
     );
   },
 
-  markAsRead: (ticketId: number, userId: string): void => {
+  markAsRead: async (ticketId: number, userId: string): Promise<void> => {
+    if (isDbEnabled) {
+      try {
+        await supabase
+          .from('ticket_reads')
+          .upsert({ 
+            userId, 
+            ticketId, 
+            lastReadTime: new Date().toISOString() 
+          }, { 
+            onConflict: 'userId,ticketId' 
+          });
+        return;
+      } catch (e) {
+        console.error("Supabase markAsRead failed", e);
+      }
+    }
+
     const storedReads = localStorage.getItem(STORAGE_KEY_READS);
     const readReceipts: Record<string, number> = storedReads ? JSON.parse(storedReads) : {};
     readReceipts[`${userId}_${ticketId}`] = Date.now();
@@ -307,7 +384,27 @@ export const ticketService = {
           .single();
 
         if (error) throw error;
-        return data as Ticket;
+        const assignedTicket = data as Ticket;
+
+        // Notify both parties
+        try {
+          await Promise.all([
+            notificationService.addNotification(
+              technician.id,
+              ticketId,
+              `Se te ha asignado el ticket #${ticketId}: ${assignedTicket.descripcion.substring(0, 30)}...`
+            ),
+            notificationService.addNotification(
+              assignedTicket.userId,
+              ticketId,
+              `El técnico ${technician.name} ha sido asignado a tu ticket #${ticketId}.`
+            )
+          ]);
+        } catch (notifErr) {
+          console.error("Failed to send assignment notifications", notifErr);
+        }
+
+        return assignedTicket;
       } catch (e) {
         console.error("Supabase assignTechnician failed", e);
       }
