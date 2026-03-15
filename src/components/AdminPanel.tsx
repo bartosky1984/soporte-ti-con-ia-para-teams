@@ -25,18 +25,8 @@ export const AdminPanel: React.FC = () => {
     setClassifications(data);
   };
 
-  const handleRoleToggle = async (userId: string, currentRole: UserRole) => {
+  const handleUpdateRole = async (userId: string, newRole: UserRole) => {
     setLoading(true);
-    let newRole: UserRole;
-    
-    if (currentRole === UserRole.USER) {
-      newRole = UserRole.TECHNICIAN;
-    } else if (currentRole === UserRole.TECHNICIAN) {
-      newRole = UserRole.LEAD_TECHNICIAN;
-    } else {
-      newRole = UserRole.USER;
-    }
-
     try {
       await userService.updateUserRole(userId, newRole);
       await loadUsers();
@@ -115,18 +105,58 @@ export const AdminPanel: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-right">
                         {userItem.role !== UserRole.ADMIN && (
-                          <button
-                            onClick={() => handleRoleToggle(userItem.id, userItem.role)}
-                            disabled={loading}
-                            className={`text-xs px-3 py-1.5 rounded transition-all ${
-                              userItem.role === UserRole.TECHNICIAN 
-                                ? 'text-red-600 hover:bg-red-50' 
-                                : 'bg-teams-purple text-white hover:bg-opacity-90'
-                            }`}
-                          >
-                            {userItem.role === UserRole.LEAD_TECHNICIAN ? 'Degradar a Empleado' : 
-                             userItem.role === UserRole.TECHNICIAN ? 'Promover a Jefe' : 'Promover a Técnico'}
-                          </button>
+                          <div className="flex justify-end gap-2">
+                            {userItem.role === UserRole.USER && (
+                              <button
+                                onClick={() => handleUpdateRole(userItem.id, UserRole.TECHNICIAN)}
+                                disabled={loading}
+                                className="text-xs bg-teams-purple text-white px-3 py-1.5 rounded hover:bg-opacity-90 transition-all font-medium"
+                              >
+                                {loading && <ICONS.Spinner size={12} className="inline mr-1" />}
+                                Convertir en Técnico
+                              </button>
+                            )}
+
+                            {userItem.role === UserRole.TECHNICIAN && (
+                              <>
+                                <button
+                                  onClick={() => handleUpdateRole(userItem.id, UserRole.LEAD_TECHNICIAN)}
+                                  disabled={loading}
+                                  className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700 transition-all font-medium"
+                                >
+                                  {loading && <ICONS.Spinner size={12} className="inline mr-1" />}
+                                  Promover a Jefe
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateRole(userItem.id, UserRole.USER)}
+                                  disabled={loading}
+                                  className="text-[10px] text-gray-500 hover:text-red-600 px-2 py-1 transition-all border border-gray-200 rounded hover:border-red-100"
+                                >
+                                  Quitar Permisos
+                                </button>
+                              </>
+                            )}
+
+                            {userItem.role === UserRole.LEAD_TECHNICIAN && (
+                              <>
+                                <button
+                                  onClick={() => handleUpdateRole(userItem.id, UserRole.TECHNICIAN)}
+                                  disabled={loading}
+                                  className="text-xs bg-teams-purple text-white px-3 py-1.5 rounded hover:bg-opacity-90 transition-all font-medium"
+                                >
+                                  {loading && <ICONS.Spinner size={12} className="inline mr-1" />}
+                                  Cambiar a Técnico
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateRole(userItem.id, UserRole.USER)}
+                                  disabled={loading}
+                                  className="text-[10px] text-gray-500 hover:text-red-600 px-2 py-1 transition-all border border-gray-200 rounded hover:border-red-100"
+                                >
+                                  Quitar Permisos
+                                </button>
+                              </>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>
