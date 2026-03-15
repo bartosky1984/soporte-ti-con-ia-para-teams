@@ -23,7 +23,7 @@ export const TicketList: React.FC<TicketListProps> = ({
   isLoading, 
   currentUser 
 }) => {
-  const canManage = currentUser.role === UserRole.TECHNICIAN || currentUser.role === UserRole.ADMIN;
+  const canManage = currentUser.role === UserRole.TECHNICIAN || currentUser.role === UserRole.LEAD_TECHNICIAN || currentUser.role === UserRole.ADMIN;
 
   if (isLoading) {
     return (
