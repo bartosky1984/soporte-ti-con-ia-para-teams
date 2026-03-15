@@ -28,15 +28,17 @@ Este documento detalla los pasos seguidos y los hitos pendientes para completar 
 - [x] **Seguridad de Datos**: Implementación de perfiles en base de datos y auditoría delegada.
 
 ## 🔔 Fase 4: Experiencia de Usuario & Pulido
-- [ ] **Notificaciones en Tiempo Real**: Usar Supabase Realtime para alertar nuevos comentarios.
+- [x] **Notificaciones Persisistentes**: Sistema de alertas guardado en DB (Supabase).
+- [ ] **Sincronización Realtime**: Evolucionar polling a Supabase Realtime para alertar nuevos comentarios.
 - [ ] **Búsqueda Avanzada**: Filtros por fecha, usuario y texto completo.
 - [ ] **Adjuntos**: Integración con Supabase Storage para subir capturas de pantalla de errores.
 - [ ] **Modo Offline Mejorado**: Sincronización en segundo plano al recuperar conexión.
 
-## 🚀 Fase 5: Producción & Feedback
-- [ ] Configuración avanzada de variables de entorno para Stage/Prod.
-- [ ] Optimización de assets y bundle size.
-- [ ] Despliegue final en Vercel/Netlify.
+## 🚀 Fase 5: Producción & Feedback (En Proceso)
+- [x] Configuración de variables de entorno para Producción (Vercel).
+- [x] Corrección de errores de compilación y tipos para entornos productivos.
+- [x] Despliegue funcional en Vercel.
+- [ ] Optimización de assets y bundle size (Code-splitting).
 - [ ] Auditoría de accesibilidad (WCAG AA).
 
 ---
