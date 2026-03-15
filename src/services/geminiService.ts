@@ -1,7 +1,8 @@
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || 'AIza-placeholder' });
+// The API key is defined in vite.config.ts and injected via process.env.GEMINI_API_KEY
+const apiKey = (typeof process !== 'undefined' && process.env.GEMINI_API_KEY) || import.meta.env.VITE_GEMINI_API_KEY || '';
+const genAI = new GoogleGenerativeAI(apiKey);
 
 export enum ChatMode {
   STANDARD = 'standard',
@@ -13,19 +14,19 @@ export enum ChatMode {
 export const geminiService = {
   /**
    * Fast analysis of ticket content to suggest category or quick fixes
-   * Uses Gemini Flash Lite for low latency
    */
   analyzeTicket: async (description: string): Promise<string> => {
-    if (!description || description.length < 5) return "";
+    if (!description || description.length < 5 || !apiKey) return "";
     
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-preview',
-        contents: `Analiza esta descripción de ticket de soporte y proporciona una sugerencia de causa o categoría muy corta, de 1 oración. Responde en español.
-        
-        Descripción: ${description}`,
-      });
-      return response.text || "";
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const prompt = `Analiza esta descripción de ticket de soporte y proporciona una sugerencia de causa o categoría muy corta, de 1 oración. Responde en español.
+      
+      Descripción: ${description}`;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
     } catch (error) {
       console.error("Gemini analysis failed:", error);
       return "";
@@ -34,26 +35,26 @@ export const geminiService = {
 
   /**
    * Complex reasoning for the support assistant chat
-   * Uses different models based on the selected mode
    */
   chatWithSupport: async (
     message: string, 
-    history: any[] = [], 
+    _history: any[] = [], 
     contextKnowledge: string = "",
     mode: ChatMode = ChatMode.STANDARD
   ): Promise<string> => {
+    if (!apiKey) return "API Key de Gemini no configurada.";
+    
     try {
-      const systemInstruction = `Eres el Asistente de Soporte IT (Fase 2) para Microsoft Teams.
+      const systemInstruction = `Eres el Asistente de Soporte IT para Microsoft Teams.
       
       CONTEXTO OPERATIVO:
-      - Entorno: Producción con persistencia en Supabase activa.
-      - Estado BBDD: Persistencia ACTIVA (DB_ENABLED=true).
+      - Entorno: Producción con persistencia en Supabase.
+      - Estado BBDD: Persistencia ACTIVA.
       
       PROTOCOLO DE GESTIÓN DE TICKETS:
       1. Identifica: Usuario, Título del problema y Prioridad.
-      2. Confirmación: Informa que el ticket ha sido registrado en el sistema central.
-      3. ID Real: Los tickets ahora tienen IDs numéricos reales asignados por la base de datos. Si acabas de crear uno, menciona que su registro es permanente.
-      4. Historial: El seguimiento histórico está disponible. Puedes referenciar tickets anteriores si se proporcionan en el contexto.
+      2. Confirmación: Informa que el ticket ha sido registrado en el sistema.
+      3. ID Real: Los tickets tienen IDs reales asignados por el sistema.
       
       RESTRICCIONES CRÍTICAS:
       - NO solicites credenciales ni datos sensibles.
@@ -63,62 +64,50 @@ export const geminiService = {
       ${contextKnowledge}
       `;
 
-      let model = 'gemini-3-pro-preview';
-      let config: any = { systemInstruction };
-
-      if (mode === ChatMode.FAST) {
-        model = 'gemini-3.1-flash-lite-preview';
-      } else if (mode === ChatMode.THINKING) {
-        model = 'gemini-3.1-pro-preview';
-        config.thinkingConfig = { thinkingLevel: ThinkingLevel.HIGH };
-      } else if (mode === ChatMode.SEARCH) {
-        model = 'gemini-3-flash-preview';
-        config.tools = [{ googleSearch: {} }];
+      let modelName = 'gemini-1.5-flash';
+      if (mode === ChatMode.THINKING || mode === ChatMode.STANDARD) {
+        modelName = 'gemini-1.5-pro';
       }
 
-      const response = await ai.models.generateContent({
-        model,
-        contents: message,
-        config,
+      const model = genAI.getGenerativeModel({ 
+        model: modelName,
+        systemInstruction: systemInstruction 
       });
 
-      return response.text || "Tengo problemas para conectar con el cerebro de soporte en este momento.";
+      const result = await model.generateContent(message);
+      const response = await result.response;
+      return response.text();
     } catch (error) {
       console.error("Gemini chat failed:", error);
-      return "Lo siento, encontré un error al procesar tu solicitud.";
+      return "Lo siento, encontré un error al procesar tu solicitud con la IA.";
     }
   },
 
   /**
-   * Vision capabilities to analyze screenshots of errors
-   * Uses Gemini Pro Vision
+   * Vision capabilities to analyze screenshots
    */
   analyzeScreenshot: async (base64Image: string): Promise<string> => {
+    if (!apiKey) return "API Key no configurada.";
+    
     try {
-      // Extract mime type if present, default to png
-      const match = base64Image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
-      const mimeType = match ? match[1] : 'image/png';
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       
-      // Remove data URL prefix
       const cleanBase64 = base64Image.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
+      const mimeMatch = base64Image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
-        contents: {
-          parts: [
-            {
-              inlineData: {
-                mimeType: mimeType,
-                data: cleanBase64
-              }
-            },
-            {
-              text: "Analiza esta captura de pantalla. Si contiene un mensaje de error, extráelo. Describe el problema técnico visto en la imagen adecuado para una descripción de ticket de soporte IT. Responde en español."
-            }
-          ]
-        }
-      });
-      return response.text || "";
+      const result = await model.generateContent([
+        {
+          inlineData: {
+            data: cleanBase64,
+            mimeType: mimeType
+          }
+        },
+        { text: "Analiza esta captura de pantalla de un error técnico. Describe qué sucede y sugiere un título para el ticket. Responde en español." }
+      ]);
+      
+      const response = await result.response;
+      return response.text();
     } catch (error) {
       console.error("Gemini vision failed:", error);
       throw error;
