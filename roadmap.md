@@ -24,6 +24,9 @@ Este documento detalla los pasos seguidos y los hitos pendientes para completar 
 ## 🛡️ Fase 3: Roles & Seguridad Avanzada (Completada)
 - [-] ~~Integración con GitHub~~ (Cancelado: se prefiere gestión interna de tickets críticos).
 - [x] **Gestión de Roles**: Interfaz para promover usuarios a técnicos desde el panel de Admin.
+- [x] **Rol de Técnico Jefe (Lead)**: Implementación de jerarquía técnica para delegación de tareas.
+- [x] **Asignación de Tickets**: Capacidad de delegar tickets a técnicos específicos (Admin/Jefe).
+- [x] **Clasificación Dinámica**: Estadísticas automáticas basadas en categorías reales de la DB.
 - [x] **Auditoría de Cambios**: Registro de quién cambió el estado de un ticket y cuándo.
 - [x] **Seguridad de Datos**: Implementación de perfiles en base de datos y auditoría delegada.
 
