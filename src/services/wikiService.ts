@@ -1,6 +1,10 @@
 import { FAQ } from '../types';
+import { supabase } from './supabaseClient';
 
-const FAQS: FAQ[] = [
+const isDbEnabled = (import.meta.env?.VITE_DB_ENABLED === 'true' || (typeof process !== 'undefined' && process.env.DB_ENABLED === 'true'));
+
+// Static fallback in case DB is down or empty
+const STATIC_FAQS: FAQ[] = [
   {
     id: '1',
     category: 'Redes',
@@ -18,27 +22,29 @@ const FAQS: FAQ[] = [
     category: 'Software',
     question: 'Outlook no actualiza los correos',
     answer: 'Si Outlook dice "Desconectado" o "Intentando conectar" en la barra inferior: 1. Verifica tu conexión a Internet. 2. Ve a la pestaña "Enviar y recibir" y asegúrate de que "Trabajar sin conexión" NO esté marcado. 3. Cierra Outlook completamente y vuelve a abrirlo.'
-  },
-  {
-    id: '4',
-    category: 'General',
-    question: '¿Cómo reservar una sala de reuniones?',
-    answer: 'Las reservas se gestionan a través del calendario de Outlook. 1. Crea una "Nueva reunión". 2. En el campo "Ubicación" o mediante el botón "Buscador de salas", selecciona la sala deseada. 3. Si la sala acepta, recibirás un correo de confirmación automática.'
-  },
-  {
-    id: '5',
-    category: 'Software',
-    question: 'Restablecer contraseña de dominio',
-    answer: 'Si has olvidado tu contraseña o ha caducado: 1. Ve a https://password.empresa.com. 2. Selecciona "Restablecer contraseña". 3. Sigue los pasos de verificación de identidad. Nota: Necesitarás tu teléfono móvil registrado.'
   }
 ];
 
 export const wikiService = {
-  getFaqs: (): FAQ[] => {
-    return FAQS;
+  getFaqs: async (): Promise<FAQ[]> => {
+    if (isDbEnabled) {
+      try {
+        const { data, error } = await supabase
+          .from('faqs')
+          .select('*')
+          .order('category');
+        
+        if (error) throw error;
+        if (data && data.length > 0) return data as FAQ[];
+      } catch (e) {
+        console.error("Supabase getFaqs failed", e);
+      }
+    }
+    return STATIC_FAQS;
   },
   
-  getFaqsAsString: (): string => {
-    return FAQS.map(f => `P: ${f.question}\nR: ${f.answer}`).join('\n\n');
+  getFaqsAsString: async (): Promise<string> => {
+    const faqs = await wikiService.getFaqs();
+    return faqs.map(f => `P: ${f.question}\nR: ${f.answer}`).join('\n\n');
   }
 };

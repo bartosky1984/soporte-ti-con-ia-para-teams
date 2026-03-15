@@ -66,7 +66,8 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
   const loadClassifications = async () => {
     if (canManage) {
-      setClassifications(classificationService.getClassifications());
+      const data = await classificationService.getClassifications();
+      setClassifications(data);
     }
   };
 

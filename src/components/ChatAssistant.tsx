@@ -43,7 +43,7 @@ export const ChatAssistant: React.FC = () => {
 
     try {
       // 1. Gather Context (FAQs only for MVP Phase 1)
-      const faqs = wikiService.getFaqsAsString();
+      const faqs = await wikiService.getFaqsAsString();
       
       const combinedKnowledge = `
       --- PREGUNTAS FRECUENTES (Wiki Tech) ---

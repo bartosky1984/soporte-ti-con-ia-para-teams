@@ -1,82 +1,107 @@
 import { Notification } from '../types';
+import { supabase } from './supabaseClient';
 
-const STORAGE_KEY_NOTIFICATIONS = 'teams_tickets_notifications';
+const isDbEnabled = (import.meta.env?.VITE_DB_ENABLED === 'true' || (typeof process !== 'undefined' && process.env.DB_ENABLED === 'true'));
 
 export const notificationService = {
-  getNotifications: (userId: string): Notification[] => {
-    const stored = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
-    if (!stored) return [];
-    
-    try {
-      const allNotifications: Notification[] = JSON.parse(stored);
-      // Return notifications for this user, sorted by newest
-      return allNotifications
-        .filter(n => n.userId === userId)
-        .sort((a, b) => b.timestamp - a.timestamp);
-    } catch (e) {
-      return [];
+  getNotifications: async (userId: string): Promise<Notification[]> => {
+    if (isDbEnabled) {
+      try {
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('userId', userId)
+          .order('timestamp', { ascending: false });
+        
+        if (error) throw error;
+        return (data || []).map(n => ({
+          ...n,
+          timestamp: new Date(n.timestamp).getTime()
+        })) as Notification[];
+      } catch (e) {
+        console.error("Supabase getNotifications failed", e);
+      }
     }
+
+    // Fallback to localStorage
+    const stored = localStorage.getItem('teams_tickets_notifications');
+    if (!stored) return [];
+    try {
+      const all: Notification[] = JSON.parse(stored);
+      return all.filter(n => n.userId === userId).sort((a, b) => b.timestamp - a.timestamp);
+    } catch (e) { return []; }
   },
 
-  getUnreadCount: (userId: string): number => {
-    const notifs = notificationService.getNotifications(userId);
+  getUnreadCount: async (userId: string): Promise<number> => {
+    const notifs = await notificationService.getNotifications(userId);
     return notifs.filter(n => !n.read).length;
   },
 
-  addNotification: (userId: string, ticketId: number, message: string): void => {
-    const stored = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
-    const allNotifications: Notification[] = stored ? JSON.parse(stored) : [];
+  addNotification: async (userId: string, ticketId: number, message: string): Promise<void> => {
+    if (isDbEnabled) {
+      try {
+        const { error } = await supabase
+          .from('notifications')
+          .insert([{ userId, ticketId, message, read: false }]);
+        if (!error) return;
+      } catch (e) {
+        console.error("Supabase addNotification failed", e);
+      }
+    }
 
-    const newNotification: Notification = {
+    const stored = localStorage.getItem('teams_tickets_notifications');
+    const all: Notification[] = stored ? JSON.parse(stored) : [];
+    all.push({
       id: Date.now().toString() + Math.random().toString(),
       userId,
       ticketId,
       message,
       read: false,
       timestamp: Date.now()
-    };
-
-    allNotifications.push(newNotification);
-    localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(allNotifications));
+    });
+    localStorage.setItem('teams_tickets_notifications', JSON.stringify(all));
   },
 
-  markAsRead: (notificationId: string): Notification[] => {
-    const stored = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
+  markAsRead: async (notificationId: string): Promise<Notification[]> => {
+    if (isDbEnabled) {
+      try {
+        const { data: current } = await supabase.from('notifications').select('userId').eq('id', notificationId).single();
+        if (current) {
+          const { error } = await supabase.from('notifications').update({ read: true }).eq('id', notificationId);
+          if (!error) return notificationService.getNotifications(current.userId);
+        }
+      } catch (e) {
+        console.error("Supabase markAsRead failed", e);
+      }
+    }
+
+    // Fallback
+    const stored = localStorage.getItem('teams_tickets_notifications');
     if (!stored) return [];
-
-    let allNotifications: Notification[] = JSON.parse(stored);
-    
-    // Find notification to determine userId (to return correct list)
-    const target = allNotifications.find(n => n.id === notificationId);
+    let all: Notification[] = JSON.parse(stored);
+    const target = all.find(n => n.id === notificationId);
     if (!target) return [];
-
-    // Update read status
-    allNotifications = allNotifications.map(n => 
-      n.id === notificationId ? { ...n, read: true } : n
-    );
-
-    localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(allNotifications));
-    
-    // Return updated list for that user
-    return allNotifications
-        .filter(n => n.userId === target.userId)
-        .sort((a, b) => b.timestamp - a.timestamp);
+    all = all.map(n => n.id === notificationId ? { ...n, read: true } : n);
+    localStorage.setItem('teams_tickets_notifications', JSON.stringify(all));
+    return all.filter(n => n.userId === target.userId).sort((a, b) => b.timestamp - a.timestamp);
   },
   
-  markAllAsRead: (userId: string): Notification[] => {
-     const stored = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
-     if (!stored) return [];
-     
-     let allNotifications: Notification[] = JSON.parse(stored);
-     
-     allNotifications = allNotifications.map(n => 
-        n.userId === userId ? { ...n, read: true } : n
-     );
-     
-     localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(allNotifications));
-     
-     return allNotifications
-        .filter(n => n.userId === userId)
-        .sort((a, b) => b.timestamp - a.timestamp);
+  markAllAsRead: async (userId: string): Promise<Notification[]> => {
+    if (isDbEnabled) {
+      try {
+        await supabase.from('notifications').update({ read: true }).eq('userId', userId);
+        return notificationService.getNotifications(userId);
+      } catch (e) {
+        console.error("Supabase markAllAsRead failed", e);
+      }
+    }
+
+    // Fallback
+    const stored = localStorage.getItem('teams_tickets_notifications');
+    if (!stored) return [];
+    let all: Notification[] = JSON.parse(stored);
+    all = all.map(n => n.userId === userId ? { ...n, read: true } : n);
+    localStorage.setItem('teams_tickets_notifications', JSON.stringify(all));
+    return all.filter(n => n.userId === userId).sort((a, b) => b.timestamp - a.timestamp);
   }
 };

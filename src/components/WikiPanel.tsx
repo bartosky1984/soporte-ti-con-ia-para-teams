@@ -9,7 +9,11 @@ export const WikiPanel: React.FC = () => {
   const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
-    setFaqs(wikiService.getFaqs());
+    const loadFaqs = async () => {
+      const data = await wikiService.getFaqs();
+      setFaqs(data);
+    };
+    loadFaqs();
   }, []);
 
   const filteredFaqs = faqs.filter(faq => 

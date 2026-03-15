@@ -56,11 +56,15 @@ export default function App() {
     }
   };
 
-  const fetchNotifications = () => {
+  const fetchNotifications = async () => {
     if (!user) return;
-    const data = notificationService.getNotifications(user.id);
-    setNotifications(data);
-    setUnreadCount(data.filter(n => !n.read).length);
+    try {
+      const data = await notificationService.getNotifications(user.id);
+      setNotifications(data);
+      setUnreadCount(data.filter(n => !n.read).length);
+    } catch (e) {
+      console.error("Failed to fetch notifications", e);
+    }
   };
 
   useEffect(() => {
@@ -115,11 +119,11 @@ export default function App() {
     setSelectedTicket(null);
   };
 
-  const handleSelectTicket = (ticket: Ticket) => {
+  const handleSelectTicket = async (ticket: Ticket) => {
       setSelectedTicket(ticket);
       if (user) {
         // Mark as read immediately when opening
-        ticketService.markAsRead(ticket.id, user.id);
+        await ticketService.markAsRead(ticket.id, user.id);
         // Optimistically update UI to remove badge
         setTickets(prev => prev.map(t => 
             t.id === ticket.id ? { ...t, unreadCount: 0 } : t
@@ -127,15 +131,15 @@ export default function App() {
       }
   };
 
-  const handleNotificationClick = (notif: Notification) => {
+  const handleNotificationClick = async (notif: Notification) => {
       // Find the ticket and open it
       const ticket = tickets.find(t => t.id === notif.ticketId);
       if (ticket) {
-          handleSelectTicket(ticket);
+          await handleSelectTicket(ticket);
           setActiveTab(Tab.LIST); 
           setShowNotifications(false);
           // Mark notification as read
-          const updated = notificationService.markAsRead(notif.id);
+          const updated = await notificationService.markAsRead(notif.id);
           setNotifications(updated);
           setUnreadCount(updated.filter(n => !n.read).length);
       }

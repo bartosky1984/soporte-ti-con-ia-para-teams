@@ -17,13 +17,13 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   userId
 }) => {
 
-  const handleMarkAsRead = (id: string) => {
-    const updated = notificationService.markAsRead(id);
+  const handleMarkAsRead = async (id: string) => {
+    const updated = await notificationService.markAsRead(id);
     onUpdateNotifications(updated);
   };
 
-  const handleMarkAllRead = () => {
-    const updated = notificationService.markAllAsRead(userId);
+  const handleMarkAllRead = async () => {
+    const updated = await notificationService.markAllAsRead(userId);
     onUpdateNotifications(updated);
   };
 

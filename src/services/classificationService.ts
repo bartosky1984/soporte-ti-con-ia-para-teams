@@ -1,6 +1,7 @@
 import { TicketClassification } from '../types';
+import { supabase } from './supabaseClient';
 
-const STORAGE_KEY = 'teams_tickets_classifications';
+const isDbEnabled = (import.meta.env?.VITE_DB_ENABLED === 'true' || (typeof process !== 'undefined' && process.env.DB_ENABLED === 'true'));
 
 const DEFAULT_CLASSIFICATIONS: TicketClassification[] = [
   { id: '1', name: 'Problema técnico' },
@@ -8,45 +9,67 @@ const DEFAULT_CLASSIFICATIONS: TicketClassification[] = [
 ];
 
 export const classificationService = {
-  getClassifications: (): TicketClassification[] => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
+  getClassifications: async (): Promise<TicketClassification[]> => {
+    if (isDbEnabled) {
       try {
-        return JSON.parse(stored);
+        const { data, error } = await supabase
+          .from('classifications')
+          .select('*')
+          .order('id');
+        
+        if (error) throw error;
+        if (data && data.length > 0) return data as TicketClassification[];
       } catch (e) {
-        console.error("Failed to parse classifications", e);
+        console.error("Supabase getClassifications failed", e);
       }
     }
-    
-    // Initialize with defaults if empty
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_CLASSIFICATIONS));
+
+    // Static fallback
     return DEFAULT_CLASSIFICATIONS;
   },
 
-  addClassification: (name: string): TicketClassification => {
-    const classifications = classificationService.getClassifications();
-    const newClassification: TicketClassification = {
-      id: Date.now().toString(),
-      name
-    };
-    classifications.push(newClassification);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(classifications));
-    return newClassification;
+  addClassification: async (name: string): Promise<TicketClassification> => {
+    if (isDbEnabled) {
+      try {
+        const { data, error } = await supabase
+          .from('classifications')
+          .insert([{ id: Date.now().toString(), name }] )
+          .select()
+          .single();
+        if (!error) return data as TicketClassification;
+      } catch (e) {
+        console.error("Supabase addClassification failed", e);
+      }
+    }
+
+    return { id: Date.now().toString(), name };
   },
 
-  updateClassification: (id: string, name: string): TicketClassification | null => {
-    const classifications = classificationService.getClassifications();
-    const index = classifications.findIndex(c => c.id === id);
-    if (index === -1) return null;
-    
-    classifications[index].name = name;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(classifications));
-    return classifications[index];
+  updateClassification: async (id: string, name: string): Promise<TicketClassification | null> => {
+    if (isDbEnabled) {
+      try {
+        const { data, error } = await supabase
+          .from('classifications')
+          .update({ name })
+          .eq('id', id)
+          .select()
+          .single();
+        if (!error) return data as TicketClassification;
+      } catch (e) {
+        console.error("Supabase updateClassification failed", e);
+      }
+    }
+    return null;
   },
 
-  deleteClassification: (id: string): void => {
-    const classifications = classificationService.getClassifications();
-    const filtered = classifications.filter(c => c.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  deleteClassification: async (id: string): Promise<void> => {
+    if (isDbEnabled) {
+      try {
+        await supabase.from('classifications').delete().eq('id', id);
+        return;
+      } catch (e) {
+        console.error("Supabase deleteClassification failed", e);
+      }
+    }
   }
 };

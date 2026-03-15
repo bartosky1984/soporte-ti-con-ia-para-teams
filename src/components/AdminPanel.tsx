@@ -20,8 +20,8 @@ export const AdminPanel: React.FC = () => {
     setUsers(data);
   };
 
-  const loadClassifications = () => {
-    const data = classificationService.getClassifications();
+  const loadClassifications = async () => {
+    const data = await classificationService.getClassifications();
     setClassifications(data);
   };
 
@@ -38,18 +38,18 @@ export const AdminPanel: React.FC = () => {
     }
   };
 
-  const handleAddClassification = (e: React.FormEvent) => {
+  const handleAddClassification = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newClassificationName) return;
-    classificationService.addClassification(newClassificationName);
+    await classificationService.addClassification(newClassificationName);
     setNewClassificationName('');
-    loadClassifications();
+    await loadClassifications();
   };
 
-  const handleRemoveClassification = (id: string) => {
+  const handleRemoveClassification = async (id: string) => {
     if (confirm('¿Estás seguro de que quieres eliminar esta clasificación?')) {
-      classificationService.deleteClassification(id);
-      loadClassifications();
+      await classificationService.deleteClassification(id);
+      await loadClassifications();
     }
   };
 

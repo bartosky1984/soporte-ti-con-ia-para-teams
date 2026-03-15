@@ -24,7 +24,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
   const [classifications, setClassifications] = useState<TicketClassification[]>([]);
 
   useEffect(() => {
-    setClassifications(classificationService.getClassifications());
+    const loadClassifications = async () => {
+      const data = await classificationService.getClassifications();
+      setClassifications(data);
+    };
+    loadClassifications();
   }, []);
 
   const handleDragStart = (e: React.DragEvent, id: number) => {
