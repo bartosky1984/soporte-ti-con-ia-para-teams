@@ -32,7 +32,7 @@ Este documento detalla los pasos seguidos y los hitos pendientes para completar 
 
 ## 🔔 Fase 4: Experiencia de Usuario & Pulido
 - [x] **Notificaciones Persisistentes**: Sistema de alertas guardado en DB (Supabase).
-- [ ] **Sincronización Realtime**: Evolucionar polling a Supabase Realtime para alertar nuevos comentarios.
+- [x] **Sincronización Realtime**: Evolucionar polling a Supabase Realtime para alertar nuevos comentarios y estados (zero-latency).
 - [ ] **Búsqueda Avanzada**: Filtros por fecha, usuario y texto completo.
 - [ ] **Adjuntos**: Integración con Supabase Storage para subir capturas de pantalla de errores.
 - [ ] **Modo Offline Mejorado**: Sincronización en segundo plano al recuperar conexión.

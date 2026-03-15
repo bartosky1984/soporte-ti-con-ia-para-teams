@@ -103,5 +103,29 @@ export const notificationService = {
     all = all.map(n => n.userId === userId ? { ...n, read: true } : n);
     localStorage.setItem('teams_tickets_notifications', JSON.stringify(all));
     return all.filter(n => n.userId === userId).sort((a, b) => b.timestamp - a.timestamp);
+  },
+
+  subscribeToNotifications: (userId: string, callback: () => void) => {
+    if (!isDbEnabled) return () => {};
+
+    const channel = supabase
+      .channel(`notifications:userId=eq.${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `userId=eq.${userId}`
+        },
+        () => {
+          callback();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }
 };

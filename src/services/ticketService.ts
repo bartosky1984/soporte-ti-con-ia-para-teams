@@ -406,10 +406,57 @@ export const ticketService = {
       totalTickets: relevantTickets.length,
       resolvedTickets: resolved.length,
       pendingTickets: relevantTickets.length - resolved.length,
-      avgResolutionTimeHours: 2.5,
+          avgResolutionTimeHours: 2.5,
       byClassification,
       byType: types,
       topUsersByLackOfTraining: Object.entries(trainingNeeded).map(([name, count]: any) => ({ name, count }))
+    };
+  },
+
+  subscribeToTickets: (callback: () => void) => {
+    if (!isDbEnabled) return () => {};
+
+    const channel = supabase
+      .channel('public:tickets')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tickets'
+        },
+        () => {
+          callback();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  subscribeToComments: (ticketId: number, callback: () => void) => {
+    if (!isDbEnabled) return () => {};
+
+    const channel = supabase
+      .channel(`public:comments:ticketId=eq.${ticketId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'comments',
+          filter: `ticketId=eq.${ticketId}`
+        },
+        () => {
+          callback();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
   }
 };

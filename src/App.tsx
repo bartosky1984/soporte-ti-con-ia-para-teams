@@ -72,17 +72,22 @@ export default function App() {
       fetchTickets();
       fetchNotifications();
       
-      // Poll for notifications every 10 seconds to simulate real-time
-      const interval = setInterval(() => {
+      // Subscribe to Realtime notifications for this user
+      const unsubscribeNotifs = notificationService.subscribeToNotifications(user.id, () => {
         fetchNotifications();
-        // Also background refresh tickets to see status changes and new comments
-        if (activeTab === Tab.LIST && user) {
-             ticketService.getTickets(user.id).then(setTickets);
-        }
-      }, 10000);
-      return () => clearInterval(interval);
+      });
+
+      // Subscribe to Realtime ticket changes
+      const unsubscribeTickets = ticketService.subscribeToTickets(() => {
+        fetchTickets();
+      });
+
+      return () => {
+        unsubscribeNotifs();
+        unsubscribeTickets();
+      };
     }
-  }, [user, activeTab]);
+  }, [user]);
 
   const handleCreateTicket = async (data: { tipo: TicketType; descripcion: string }) => {
     if (!user) return;

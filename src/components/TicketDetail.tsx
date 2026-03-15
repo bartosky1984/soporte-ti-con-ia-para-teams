@@ -54,6 +54,15 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       setLoading(false);
     };
     fetchData();
+
+    // Subscribe to Realtime comments for this specific ticket
+    const unsubscribe = ticketService.subscribeToComments(ticket.id, () => {
+      loadComments();
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, [ticket.id]);
 
   useEffect(() => {
