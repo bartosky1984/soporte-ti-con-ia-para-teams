@@ -292,6 +292,42 @@ export const ticketService = {
     return tickets[index];
   },
 
+  assignTechnician: async (ticketId: number, technician: User): Promise<Ticket | null> => {
+    if (isDbEnabled) {
+      try {
+        const { data, error } = await supabase
+          .from('tickets')
+          .update({ 
+            technicianId: technician.id, 
+            technicianName: technician.name,
+            estado: TicketStatus.IN_PROGRESS // Auto-set to in progress when assigned
+          })
+          .eq('id', ticketId)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data as Ticket;
+      } catch (e) {
+        console.error("Supabase assignTechnician failed", e);
+      }
+    }
+
+    // Fallback
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return null;
+    const tickets_fallback: Ticket[] = JSON.parse(stored);
+    const index = tickets_fallback.findIndex(t => t.id === ticketId);
+    if (index === -1) return null;
+
+    tickets_fallback[index].technicianId = technician.id;
+    tickets_fallback[index].technicianName = technician.name;
+    tickets_fallback[index].estado = TicketStatus.IN_PROGRESS;
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets_fallback));
+    return tickets_fallback[index];
+  },
+
   addAuditLog: async (ticketId: number, user: User, action: string, oldValue: string, newValue: string): Promise<void> => {
     if (!isDbEnabled) return;
     
@@ -329,34 +365,47 @@ export const ticketService = {
   },
 
   getITHealthStats: async (technicianId?: string): Promise<any> => {
-    let tickets = await ticketService.getTickets();
+    // We need classifications to avoid hardcoding IDs
+    const { classificationService } = await import('./classificationService');
+    const [tickets, classifications] = await Promise.all([
+      ticketService.getTickets(),
+      classificationService.getClassifications()
+    ]);
     
-    // Filter by technician if ID is provided (Technician view)
-    if (technicianId) {
-      tickets = tickets.filter(t => t.technicianId === technicianId);
-    }
+    const relevantTickets = technicianId 
+      ? tickets.filter(t => t.technicianId === technicianId)
+      : tickets;
 
-    const resolved = tickets.filter(t => t.estado === TicketStatus.RESOLVED);
+    const resolved = relevantTickets.filter(t => t.estado === TicketStatus.RESOLVED);
     const categories = ['Software', 'Hardware', 'Redes', 'General'];
     const types = categories.map(name => ({
       name,
-      count: tickets.filter(t => t.tipo === (name === 'General' ? TicketType.GENERAL : TicketType.IT)).length
+      count: relevantTickets.filter(t => t.tipo === (name === 'General' ? TicketType.GENERAL : TicketType.IT)).length
     }));
 
-    const byClassification = [
-      { name: 'Problema técnico', count: tickets.filter(t => t.classificationId === '1').length },
-      { name: 'Falta de formación', count: tickets.filter(t => t.classificationId === '2').length }
-    ];
+    const byClassification = classifications.map(c => ({
+      name: c.name,
+      count: relevantTickets.filter(t => t.classificationId === c.id).length
+    }));
 
-    const trainingNeeded = tickets.filter(t => t.classificationId === '2').reduce((acc: any, t) => {
+    // Add "Unclassified" if there are any
+    const unclassifiedCount = relevantTickets.filter(t => !t.classificationId).length;
+    if (unclassifiedCount > 0) {
+      byClassification.push({ name: 'Sin clasificar', count: unclassifiedCount });
+    }
+
+    const trainingClassification = classifications.find(c => c.name.toLowerCase().includes('formación'));
+    const trainingId = trainingClassification?.id || '2';
+
+    const trainingNeeded = relevantTickets.filter(t => t.classificationId === trainingId).reduce((acc: any, t) => {
       acc[t.userName] = (acc[t.userName] || 0) + 1;
       return acc;
     }, {});
 
     return {
-      totalTickets: tickets.length,
+      totalTickets: relevantTickets.length,
       resolvedTickets: resolved.length,
-      pendingTickets: tickets.length - resolved.length,
+      pendingTickets: relevantTickets.length - resolved.length,
       avgResolutionTimeHours: 2.5,
       byClassification,
       byType: types,

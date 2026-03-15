@@ -23,8 +23,8 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({ user }) => {
 
   const loadStats = async () => {
     setLoading(true);
-    // Admins see global stats, Technicians see only their assigned tickets
-    const technicianId = user.role === UserRole.TECHNICIAN ? user.id : undefined;
+    // Admins and Leads see global stats, Technicians see only their assigned tickets
+    const technicianId = (user.role === UserRole.TECHNICIAN) ? user.id : undefined;
     const data = await ticketService.getITHealthStats(technicianId);
     setStats(data);
     setLoading(false);
@@ -44,7 +44,8 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({ user }) => {
         <div>
           <h2 className="text-2xl font-bold text-teams-dark">IT Health Dashboard</h2>
           <p className="text-sm text-gray-500">
-            {user.role === UserRole.ADMIN ? 'Vista Global de Rendimiento' : `Resumen de Rendimiento: ${user.name}`}
+            {user.role === UserRole.USER ? '' : 
+             (user.role === UserRole.ADMIN || user.role === UserRole.LEAD_TECHNICIAN) ? 'Vista Global de Rendimiento' : `Resumen de Rendimiento: ${user.name}`}
           </p>
         </div>
         <button 

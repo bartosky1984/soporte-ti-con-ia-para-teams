@@ -27,7 +27,16 @@ export const AdminPanel: React.FC = () => {
 
   const handleRoleToggle = async (userId: string, currentRole: UserRole) => {
     setLoading(true);
-    const newRole = currentRole === UserRole.TECHNICIAN ? UserRole.USER : UserRole.TECHNICIAN;
+    let newRole: UserRole;
+    
+    if (currentRole === UserRole.USER) {
+      newRole = UserRole.TECHNICIAN;
+    } else if (currentRole === UserRole.TECHNICIAN) {
+      newRole = UserRole.LEAD_TECHNICIAN;
+    } else {
+      newRole = UserRole.USER;
+    }
+
     try {
       await userService.updateUserRole(userId, newRole);
       await loadUsers();
@@ -115,7 +124,8 @@ export const AdminPanel: React.FC = () => {
                                 : 'bg-teams-purple text-white hover:bg-opacity-90'
                             }`}
                           >
-                            {userItem.role === UserRole.TECHNICIAN ? 'Revocar Técnico' : 'Promover a Técnico'}
+                            {userItem.role === UserRole.LEAD_TECHNICIAN ? 'Degradar a Empleado' : 
+                             userItem.role === UserRole.TECHNICIAN ? 'Promover a Jefe' : 'Promover a Técnico'}
                           </button>
                         )}
                       </td>

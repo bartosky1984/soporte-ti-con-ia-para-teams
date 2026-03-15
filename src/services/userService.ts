@@ -54,7 +54,7 @@ export const userService = {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .in('role', [UserRole.TECHNICIAN, UserRole.ADMIN])
+      .in('role', [UserRole.TECHNICIAN, UserRole.LEAD_TECHNICIAN, UserRole.ADMIN])
       .order('role');
     
     if (error) return [];

@@ -4,6 +4,7 @@ import { TicketStatus, UserRole } from './types';
 export const ROLE_LABELS = {
   [UserRole.USER]: 'Empleado',
   [UserRole.TECHNICIAN]: 'Técnico',
+  [UserRole.LEAD_TECHNICIAN]: 'Técnico Jefe',
   [UserRole.ADMIN]: 'Administrador'
 };
 

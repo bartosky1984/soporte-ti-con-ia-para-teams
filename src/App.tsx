@@ -150,7 +150,7 @@ export default function App() {
   }
 
   const isAdmin = user.role === UserRole.ADMIN;
-  const isTechOrAdmin = user.role === UserRole.TECHNICIAN || user.role === UserRole.ADMIN;
+  const isTechOrAdmin = user.role === UserRole.TECHNICIAN || user.role === UserRole.LEAD_TECHNICIAN || user.role === UserRole.ADMIN;
 
   return (
     <div className="min-h-screen bg-teams-light text-teams-dark font-sans">

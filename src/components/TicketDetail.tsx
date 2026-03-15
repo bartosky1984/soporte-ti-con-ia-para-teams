@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Ticket, TicketComment, User, TicketStatus, UserRole, TicketType, TicketClassification } from '../types';
 import { ticketService } from '../services/ticketService';
 import { classificationService } from '../services/classificationService';
+import { userService } from '../services/userService';
 import { supabase } from '../services/supabaseClient';
 import { ICONS } from '../constants';
 
@@ -34,17 +35,22 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [classifications, setClassifications] = useState<TicketClassification[]>([]);
+  const [technicians, setTechnicians] = useState<User[]>([]);
+  const [assigning, setAssigning] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
-  const canManage = currentUser.role === UserRole.TECHNICIAN || currentUser.role === UserRole.ADMIN;
+  const canManage = currentUser.role === UserRole.TECHNICIAN || currentUser.role === UserRole.LEAD_TECHNICIAN || currentUser.role === UserRole.ADMIN;
+  const canAssign = currentUser.role === UserRole.LEAD_TECHNICIAN || currentUser.role === UserRole.ADMIN;
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      await loadComments();
-      await loadAudits();
-      await loadClassifications();
-      // markAsRead(); // Assuming this function exists elsewhere
+      await Promise.all([
+        loadComments(),
+        loadAudits(),
+        loadClassifications(),
+        loadTechnicians()
+      ]);
       setLoading(false);
     };
     fetchData();
@@ -52,7 +58,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
   useEffect(() => {
     commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [comments, activeSubTab]); // Scroll when comments change or tab changes to comments
+  }, [comments, activeSubTab]);
 
   const loadComments = async () => {
     const data = await ticketService.getComments(ticket.id);
@@ -68,6 +74,13 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
     if (canManage) {
       const data = await classificationService.getClassifications();
       setClassifications(data);
+    }
+  };
+
+  const loadTechnicians = async () => {
+    if (canAssign) {
+      const data = await userService.getTechnicians();
+      setTechnicians(data);
     }
   };
 
@@ -91,6 +104,27 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
     const updatedTicket = await ticketService.updateTicketClassification(ticket.id, newClassificationId);
     if (updatedTicket && onTicketUpdate) {
       onTicketUpdate(updatedTicket);
+    }
+  };
+
+  const handleAssignTechnician = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const techId = e.target.value;
+    if (!techId) return;
+    
+    const selectedTech = technicians.find(t => t.id === techId);
+    if (!selectedTech) return;
+
+    setAssigning(true);
+    try {
+      const updatedTicket = await ticketService.assignTechnician(ticket.id, selectedTech);
+      if (updatedTicket && onTicketUpdate) {
+        onTicketUpdate(updatedTicket);
+        await loadAudits(); // Refresh history
+      }
+    } catch (error) {
+      console.error("Error assigning technician:", error);
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -130,35 +164,57 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
               )}
             </div>
             
-            {ticket.technicianName && (
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-xs bg-teams-purple bg-opacity-10 text-teams-purple px-2 py-1 rounded-md flex items-center gap-1.5 font-medium">
-                  <ICONS.User size={12} /> Asignado a: <strong>{ticket.technicianName}</strong>
-                </span>
-              </div>
-            )}
-            
-            {/* Classification Dropdown for Techs/Admins */}
-            {canManage && (
-              <div className="mt-3 flex items-center gap-2">
-                <label className="text-xs font-medium text-gray-600">Clasificación:</label>
-                <select 
-                  value={ticket.classificationId || ''} 
-                  onChange={handleClassificationChange}
-                  className={`text-xs border rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-teams-purple ${
-                    !ticket.classificationId ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
-                >
-                  <option value="">Sin clasificar (Requerido para resolver)</option>
-                  {classifications.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-                {!ticket.classificationId && (
-                  <span className="text-[10px] text-red-500 font-medium">Requerido</span>
-                )}
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-4 mt-3">
+              {/* Assignment Select */}
+              {canAssign ? (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                    <ICONS.User size={12} /> Asignado a:
+                  </label>
+                  <select
+                    value={ticket.technicianId || ''}
+                    onChange={handleAssignTechnician}
+                    disabled={assigning}
+                    className="text-xs border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-teams-purple"
+                  >
+                    <option value="">-- Sin asignar --</option>
+                    {technicians.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : ticket.technicianName && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs bg-teams-purple bg-opacity-10 text-teams-purple px-2 py-1 rounded-md flex items-center gap-1.5 font-medium">
+                    <ICONS.User size={12} /> Asignado a: <strong>{ticket.technicianName}</strong>
+                  </span>
+                </div>
+              )}
+
+              {/* Classification Dropdown */}
+              {canManage && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                    <ICONS.LayoutGrid size={12} /> Clasificación:
+                  </label>
+                  <select 
+                    value={ticket.classificationId || ''} 
+                    onChange={handleClassificationChange}
+                    className={`text-xs border rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-teams-purple ${
+                      !ticket.classificationId ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Sin clasificar</option>
+                    {classifications.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  {!ticket.classificationId && (
+                    <span className="text-[10px] text-red-500 font-medium italic">Requerido para resolver</span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         
@@ -220,7 +276,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             ) : (
               comments.map(comment => {
                 const isMe = comment.userId === currentUser.id;
-                const isTech = comment.userRole === UserRole.TECHNICIAN || comment.userRole === UserRole.ADMIN;
+                const isTech = comment.userRole === UserRole.TECHNICIAN || comment.userRole === UserRole.ADMIN || comment.userRole === UserRole.LEAD_TECHNICIAN;
                 
                 return (
                   <div key={comment.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
