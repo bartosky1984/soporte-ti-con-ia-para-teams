@@ -31,8 +31,9 @@ Este documento detalla los pasos seguidos y los hitos pendientes para completar 
 - [x] **Seguridad de Datos**: Implementación de perfiles en base de datos y auditoría delegada.
 
 ## 🔔 Fase 4: Experiencia de Usuario & Pulido
-- [x] **Notificaciones Persisistentes**: Sistema de alertas guardado en DB (Supabase).
+- [x] **Notificaciones Persistentes**: Sistema de alertas guardado en DB (Supabase) y badges de lectura.
 - [x] **Sincronización Realtime**: Evolucionar polling a Supabase Realtime para alertar nuevos comentarios y estados (zero-latency).
+- [x] **Población de Datos**: Inyección de datos realistas (8+ tickets, múltiples usuarios) para testing de flujos técnicos.
 - [ ] **Búsqueda Avanzada**: Filtros por fecha, usuario y texto completo.
 - [ ] **Adjuntos**: Integración con Supabase Storage para subir capturas de pantalla de errores.
 - [ ] **Modo Offline Mejorado**: Sincronización en segundo plano al recuperar conexión.
