@@ -7,7 +7,7 @@ const STORAGE_KEY = 'teams_tickets_db';
 const STORAGE_KEY_COMMENTS = 'teams_tickets_comments';
 const STORAGE_KEY_READS = 'teams_tickets_reads'; // Format: { "userId_ticketId": timestamp }
 
-const isDbEnabled = import.meta.env.VITE_DB_ENABLED === 'true';
+const isDbEnabled = (typeof process !== 'undefined' && process.env.DB_ENABLED === 'true') || import.meta.env.VITE_DB_ENABLED === 'true';
 
 // Ensure mock tickets have owner IDs for the demo to work
 const DEFAULT_TICKETS: Ticket[] = [

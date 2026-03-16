@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Use VITE_ prefix for standard browser access via Vite
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+// Multi-layered variable detection for maximum compatibility (Vercel + Vite)
+const apiKey = (typeof process !== 'undefined' && (process.env.GEMINI_API_KEY || process.env.API_KEY)) || import.meta.env.VITE_GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(apiKey);
 
 export enum ChatMode {

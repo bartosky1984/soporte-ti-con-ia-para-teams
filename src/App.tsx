@@ -44,6 +44,16 @@ export default function App() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [filters, setFilters] = useState<FilterState | null>(null);
+  
+  // Diagnostic log for deployment debugging
+  useEffect(() => {
+    const dbStatus = (typeof process !== 'undefined' && process.env.DB_ENABLED === 'true') || import.meta.env.VITE_DB_ENABLED === 'true';
+    console.log("🚀 App Status:", {
+      databaseEnabled: dbStatus,
+      supabaseConfig: !!((typeof process !== 'undefined' && process.env.SUPABASE_URL) || import.meta.env.VITE_SUPABASE_URL),
+      environment: import.meta.env.MODE
+    });
+  }, []);
 
   const fetchTickets = async () => {
     setIsLoading(true);
