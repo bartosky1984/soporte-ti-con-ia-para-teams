@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { TicketList } from './components/TicketList';
-import { KanbanBoard } from './components/KanbanBoard';
-import { TicketForm } from './components/TicketForm';
-import { ChatAssistant } from './components/ChatAssistant';
-import { AdminPanel } from './components/AdminPanel';
-import { WikiPanel } from './components/WikiPanel';
-import { StatsDashboard } from './components/StatsDashboard';
 import { LoginScreen } from './components/LoginScreen';
-import { NotificationPanel } from './components/NotificationPanel';
-import { TicketDetail } from './components/TicketDetail';
+
+// Lazy loaded components for bundle optimization
+const KanbanBoard = lazy(() => import('./components/KanbanBoard').then(m => ({ default: m.KanbanBoard })));
+const TicketForm = lazy(() => import('./components/TicketForm').then(m => ({ default: m.TicketForm })));
+const ChatAssistant = lazy(() => import('./components/ChatAssistant').then(m => ({ default: m.ChatAssistant })));
+const AdminPanel = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
+const WikiPanel = lazy(() => import('./components/WikiPanel').then(m => ({ default: m.WikiPanel })));
+const StatsDashboard = lazy(() => import('./components/StatsDashboard').then(m => ({ default: m.StatsDashboard })));
+const NotificationPanel = lazy(() => import('./components/NotificationPanel').then(m => ({ default: m.NotificationPanel })));
+const TicketDetail = lazy(() => import('./components/TicketDetail').then(m => ({ default: m.TicketDetail })));
+const SearchFilters = lazy(() => import('./components/SearchFilters').then(m => ({ default: m.SearchFilters })));
+const UserDashboard = lazy(() => import('./components/UserDashboard').then(m => ({ default: m.UserDashboard })));
+import type { FilterState } from './components/SearchFilters';
 import { ticketService } from './services/ticketService';
 import { notificationService } from './services/notificationService';
 import { Ticket, TicketStatus, TicketType, User, UserRole, Notification } from './types';
@@ -20,14 +25,15 @@ enum Tab {
   CHAT = 'chat',
   WIKI = 'wiki',
   ADMIN = 'admin',
-  STATS = 'stats'
+  STATS = 'stats',
+  DASHBOARD = 'dashboard'
 }
 
 type ViewMode = 'list' | 'kanban';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>(Tab.LIST);
+  const [activeTab, setActiveTab] = useState<Tab>(user?.role === UserRole.USER ? Tab.DASHBOARD : Tab.LIST);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,6 +43,7 @@ export default function App() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [filters, setFilters] = useState<FilterState | null>(null);
 
   const fetchTickets = async () => {
     setIsLoading(true);
@@ -69,6 +76,9 @@ export default function App() {
 
   useEffect(() => {
     if (user) {
+      if (user.role === UserRole.USER && activeTab === Tab.LIST) {
+        setActiveTab(Tab.DASHBOARD);
+      }
       fetchTickets();
       fetchNotifications();
       
@@ -89,7 +99,7 @@ export default function App() {
     }
   }, [user]);
 
-  const handleCreateTicket = async (data: { tipo: TicketType; descripcion: string }) => {
+  const handleCreateTicket = async (data: { tipo: TicketType; descripcion: string; attachmentUrl?: string }) => {
     if (!user) return;
     try {
       await ticketService.createTicket(data, user); // Pass user
@@ -157,10 +167,46 @@ export default function App() {
   const isAdmin = user.role === UserRole.ADMIN;
   const isTechOrAdmin = user.role === UserRole.TECHNICIAN || user.role === UserRole.LEAD_TECHNICIAN || user.role === UserRole.ADMIN;
 
+  // Filtering Logic
+  const filteredTickets = tickets.filter(ticket => {
+    if (!filters) return true;
+    
+    const matchesSearch = !filters.searchText || 
+      ticket.descripcion.toLowerCase().includes(filters.searchText.toLowerCase()) ||
+      ticket.id.toString().includes(filters.searchText) ||
+      ticket.userName.toLowerCase().includes(filters.searchText.toLowerCase()) ||
+      (ticket.technicianName?.toLowerCase().includes(filters.searchText.toLowerCase()));
+
+    const matchesCreator = filters.creatorId === 'all' || ticket.userId === filters.creatorId;
+    const matchesTechnician = filters.technicianId === 'all' || 
+      (filters.technicianId === 'unassigned' && !ticket.technicianId) || 
+      ticket.technicianId === filters.technicianId;
+    
+    const matchesStatus = filters.status === 'all' || ticket.estado === filters.status;
+    
+    // Date Filtering
+    const ticketDate = new Date(ticket.fecha).getTime();
+    let matchesDate = true;
+    
+    if (filters.startDate) {
+      const start = new Date(filters.startDate);
+      start.setHours(0, 0, 0, 0);
+      matchesDate = matchesDate && ticketDate >= start.getTime();
+    }
+    
+    if (filters.endDate) {
+      const end = new Date(filters.endDate);
+      end.setHours(23, 59, 59, 999);
+      matchesDate = matchesDate && ticketDate <= end.getTime();
+    }
+
+    return matchesSearch && matchesCreator && matchesTechnician && matchesStatus && matchesDate;
+  });
+
   return (
-    <div className="min-h-screen bg-teams-light text-teams-dark font-sans">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-10">
+    <div className="min-h-screen bg-teams-light text-teams-dark font-sans flex flex-col">
+      {/* Header Landmark */}
+      <header role="banner" className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-10 w-full">
         <div className="flex items-center space-x-3">
           <div className="bg-teams-purple p-1.5 rounded text-white">
             <ICONS.Ticket />
@@ -173,30 +219,31 @@ export default function App() {
           <div className="relative">
             <button 
               onClick={() => setShowNotifications(!showNotifications)}
-              className="p-1 text-gray-500 hover:text-teams-purple relative transition-colors focus:outline-none"
+              className="p-1 text-gray-500 hover:text-teams-purple relative transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teams-purple rounded"
               title="Notificaciones"
+              aria-label={`Notificaciones ${unreadCount > 0 ? `(${unreadCount} sin leer)` : ''}`}
+              aria-expanded={showNotifications}
+              type="button"
             >
-              <ICONS.Bell />
+              <ICONS.Bell aria-hidden="true" />
               {unreadCount > 0 && (
-                <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white transform translate-x-1/4 -translate-y-1/4" />
+                <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white transform translate-x-1/4 -translate-y-1/4" aria-hidden="true" />
               )}
             </button>
             
             {showNotifications && (
               <div className="absolute right-0 top-12 z-50">
-                 <NotificationPanel 
-                    userId={user.id}
-                    notifications={notifications}
-                    onClose={() => setShowNotifications(false)}
-                    onUpdateNotifications={(updated) => {
-                      setNotifications(updated);
-                      setUnreadCount(updated.filter(n => !n.read).length);
-                    }}
-                 />
-                 {/* Overlay hack to capture clicks on notifications to navigate */}
-                 {notifications.length > 0 && (
-                     <div className="absolute top-10 left-0 w-full h-full pointer-events-none"></div>
-                 )}
+                <Suspense fallback={<div className="bg-white p-4 shadow-xl rounded-lg border animate-pulse">Cargando...</div>}>
+                  <NotificationPanel 
+                      userId={user.id}
+                      notifications={notifications}
+                      onClose={() => setShowNotifications(false)}
+                      onUpdateNotifications={(updated) => {
+                        setNotifications(updated);
+                        setUnreadCount(updated.filter(n => !n.read).length);
+                      }}
+                  />
+                </Suspense>
               </div>
             )}
           </div>
@@ -207,22 +254,38 @@ export default function App() {
           </div>
           <button 
             onClick={handleLogout}
-            className="text-gray-400 hover:text-teams-purple transition-colors p-1"
+            className="text-gray-400 hover:text-teams-purple transition-colors p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-teams-purple rounded"
             title="Cerrar Sesión"
+            aria-label="Cerrar sesión"
+            type="button"
           >
-            <ICONS.Logout />
+            <ICONS.Logout aria-hidden="true" />
           </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="w-full max-w-7xl mx-auto p-6" onClick={() => { if(showNotifications) setShowNotifications(false) }}>
+      {/* Main Content Landmark */}
+      <main role="main" id="main-content" className="w-full max-w-7xl mx-auto p-6 flex-grow" onClick={() => { if(showNotifications) setShowNotifications(false) }}>
         
-        {/* Navigation Tabs - Hide when looking at a specific ticket details */}
+        {/* Navigation Tabs - Navigation Landmark */}
         {!selectedTicket && (
-            <div className="flex space-x-1 border-b border-gray-300 mb-6 overflow-x-auto">
+            <nav aria-label="Navegación principal" className="flex space-x-1 border-b border-gray-300 mb-6 overflow-x-auto">
+            <button
+                onClick={() => setActiveTab(Tab.DASHBOARD)}
+                aria-current={activeTab === Tab.DASHBOARD ? 'page' : undefined}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 flex items-center space-x-1 whitespace-nowrap ${
+                activeTab === Tab.DASHBOARD 
+                    ? 'border-teams-purple text-teams-purple' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+            >
+                <ICONS.LayoutGrid size={14} />
+                <span>Panel</span>
+            </button>
+
             <button
                 onClick={() => setActiveTab(Tab.LIST)}
+                aria-current={activeTab === Tab.LIST ? 'page' : undefined}
                 className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
                 activeTab === Tab.LIST 
                     ? 'border-teams-purple text-teams-purple' 
@@ -294,136 +357,157 @@ export default function App() {
                 <span>Admin</span>
                 </button>
             )}
-            </div>
+            </nav>
         )}
 
         {/* Tab Content */}
         <div className="transition-all duration-300 ease-in-out">
-          {selectedTicket ? (
-            <TicketDetail 
-              ticket={selectedTicket} 
-              currentUser={user}
-              onClose={() => setSelectedTicket(null)}
-              onStatusChange={handleStatusChange}
-              onTicketUpdate={(updatedTicket) => {
-                setTickets(prev => prev.map(t => t.id === updatedTicket.id ? updatedTicket : t));
-                setSelectedTicket(updatedTicket);
-              }}
-            />
-          ) : (
-            <>
-                {activeTab === Tab.LIST && (
-                    <>
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-bold text-gray-700">
-                        {user.role === UserRole.USER ? 'Mis Tickets' : 'Cola de Tickets'}
-                        </h2>
-                        
-                        <div className="flex items-center space-x-4">
-                            {isTechOrAdmin && (
-                                <div className="flex bg-gray-100 p-1 rounded-md">
-                                    <button 
-                                        onClick={() => setViewMode('list')}
-                                        className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-white shadow-sm text-teams-purple' : 'text-gray-500 hover:text-gray-700'}`}
-                                        title="Vista de Lista"
-                                    >
-                                        <ICONS.List />
-                                    </button>
-                                    <button 
-                                        onClick={() => setViewMode('kanban')}
-                                        className={`p-1.5 rounded transition-colors ${viewMode === 'kanban' ? 'bg-white shadow-sm text-teams-purple' : 'text-gray-500 hover:text-gray-700'}`}
-                                        title="Vista de Tablero (Kanban)"
-                                    >
-                                        <ICONS.LayoutGrid />
-                                    </button>
-                                </div>
-                            )}
-                            <button 
-                                onClick={fetchTickets}
-                                className="text-sm text-teams-purple hover:underline"
-                            >
-                                Actualizar
-                            </button>
-                        </div>
-                    </div>
-                    
-                    {isLoading ? (
-                        <div className="flex justify-center items-center py-12">
-                            <div className="text-teams-purple animate-spin">
-                                <ICONS.Spinner />
-                            </div>
-                            <span className="ml-2 text-gray-500">Cargando tickets...</span>
-                        </div>
-                    ) : (
-                        viewMode === 'kanban' && isTechOrAdmin ? (
-                            <KanbanBoard 
-                                tickets={tickets} 
-                                onStatusChange={handleStatusChange} 
-                                onSelectTicket={handleSelectTicket}
-                                onClassificationChange={async (id, classificationId) => {
-                                  try {
-                                    const updated = await ticketService.updateTicketClassification(id, classificationId);
-                                    if (updated) {
-                                      setTickets(prev => prev.map(t => t.id === id ? updated : t));
+          <Suspense fallback={
+            <div className="flex flex-col justify-center items-center py-20">
+               <div className="text-teams-purple animate-spin mb-4">
+                  <ICONS.Spinner size={40} />
+               </div>
+               <p className="text-gray-500 animate-pulse">Cargando módulo...</p>
+            </div>
+          }>
+            {selectedTicket ? (
+              <TicketDetail 
+                ticket={selectedTicket} 
+                currentUser={user}
+                onClose={() => setSelectedTicket(null)}
+                onStatusChange={handleStatusChange}
+                onTicketUpdate={(updatedTicket) => {
+                  setTickets(prev => prev.map(t => t.id === updatedTicket.id ? updatedTicket : t));
+                  setSelectedTicket(updatedTicket);
+                }}
+              />
+            ) : (
+              <>
+                  {activeTab === Tab.LIST && (
+                      <>
+                      <div className="flex justify-between items-center mb-4">
+                          <h2 className="text-lg font-bold text-gray-700">
+                          {user.role === UserRole.USER ? 'Mis Tickets' : 'Cola de Tickets'}
+                          </h2>
+                          
+                          <div className="flex items-center space-x-4">
+                              <div className="flex bg-gray-100 p-1 rounded-md">
+                                  <button 
+                                      onClick={() => setViewMode('list')}
+                                      className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-white shadow-sm text-teams-purple' : 'text-gray-500 hover:text-gray-700'}`}
+                                      title="Vista de Lista"
+                                  >
+                                      <ICONS.List />
+                                  </button>
+                                  <button 
+                                      onClick={() => setViewMode('kanban')}
+                                      className={`p-1.5 rounded transition-colors ${viewMode === 'kanban' ? 'bg-white shadow-sm text-teams-purple' : 'text-gray-500 hover:text-gray-700'}`}
+                                      title="Vista de Tablero (Kanban)"
+                                  >
+                                      <ICONS.LayoutGrid />
+                                  </button>
+                              </div>
+                              <button 
+                                  onClick={fetchTickets}
+                                  className="text-sm text-teams-purple hover:underline"
+                              >
+                                  Actualizar
+                              </button>
+                          </div>
+                      </div>
+                      {/* Búsqueda Avanzada y Filtros */}
+                      <SearchFilters currentUser={user} onFilterChange={setFilters} />
+                      
+                      {isLoading ? (
+                          <div className="flex justify-center items-center py-12">
+                              <div className="text-teams-purple animate-spin">
+                                  <ICONS.Spinner />
+                              </div>
+                              <span className="ml-2 text-gray-500">Cargando tickets...</span>
+                          </div>
+                      ) : (
+                          viewMode === 'kanban' ? (
+                              <KanbanBoard 
+                                  tickets={filteredTickets} 
+                                  onStatusChange={handleStatusChange} 
+                                  onSelectTicket={handleSelectTicket}
+                                  currentUser={user}
+                                  onClassificationChange={async (id, classificationId) => {
+                                    try {
+                                      const updated = await ticketService.updateTicketClassification(id, classificationId);
+                                      if (updated) {
+                                        setTickets(prev => prev.map(t => t.id === id ? updated : t));
+                                      }
+                                    } catch (e) {
+                                      console.error("Error updating classification", e);
                                     }
-                                  } catch (e) {
-                                    console.error("Error updating classification", e);
-                                  }
-                                }}
-                            />
-                        ) : (
-                            <TicketList 
-                                tickets={tickets} 
-                                onStatusChange={handleStatusChange} 
-                                onSelectTicket={handleSelectTicket}
-                                isLoading={isLoading} 
-                                currentUser={user}
-                            />
-                        )
-                    )}
-                    </>
-                )}
+                                  }}
+                              />
+                          ) : (
+                              <TicketList 
+                                  tickets={filteredTickets} 
+                                  onStatusChange={handleStatusChange} 
+                                  onSelectTicket={handleSelectTicket}
+                                  isLoading={isLoading} 
+                                  currentUser={user}
+                              />
+                          )
+                      )}
+                      </>
+                  )}
 
-                {activeTab === Tab.NEW && (
-                    <TicketForm 
-                    onSubmit={handleCreateTicket} 
-                    onCancel={() => setActiveTab(Tab.LIST)} 
+                  {activeTab === Tab.NEW && (
+                      <TicketForm 
+                      onSubmit={handleCreateTicket} 
+                      onCancel={() => setActiveTab(Tab.LIST)} 
+                      />
+                  )}
+
+                  {activeTab === Tab.DASHBOARD && (
+                    <UserDashboard 
+                      tickets={tickets.filter(t => t.userId === user.id)}
+                      onCreateTicket={() => setActiveTab(Tab.NEW)}
+                      onViewTickets={(view) => {
+                        setViewMode(view as ViewMode);
+                        setActiveTab(Tab.LIST);
+                      }}
                     />
-                )}
+                  )}
 
-                {activeTab === Tab.CHAT && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="md:col-span-2">
-                        <ChatAssistant />
-                    </div>
-                    <div className="bg-white p-4 rounded-lg border border-gray-200 h-fit">
-                        <h3 className="font-semibold mb-2 text-sm">Sobre Soporte IA</h3>
-                        <p className="text-xs text-gray-500 mb-3">
-                        Nuestro Asistente IA usa <strong>Gemini Pro</strong> para ayudar a diagnosticar problemas antes de enviar un ticket.
-                        </p>
-                        <ul className="text-xs text-gray-500 list-disc list-inside space-y-1">
-                        <li><strong>Aprendizaje Automático:</strong> La IA conoce las soluciones de tickets pasados.</li>
-                        <li><strong>Wiki Integrada:</strong> Consulta las FAQs antes de responder.</li>
-                        <li>Haz preguntas técnicas</li>
-                        <li>Soluciona errores de software</li>
-                        </ul>
-                    </div>
-                    </div>
-                )}
-                
-                {activeTab === Tab.WIKI && (
-                    <WikiPanel />
-                )}
+                  {activeTab === Tab.CHAT && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="md:col-span-2">
+                          <ChatAssistant />
+                      </div>
+                      <div className="bg-white p-4 rounded-lg border border-gray-200 h-fit">
+                          <h3 className="font-semibold mb-2 text-sm">Sobre Soporte IA</h3>
+                          <p className="text-xs text-gray-500 mb-3">
+                          Nuestro Asistente IA usa <strong>Gemini Pro</strong> para ayudar a diagnosticar problemas antes de enviar un ticket.
+                          </p>
+                          <ul className="text-xs text-gray-500 list-disc list-inside space-y-1">
+                          <li><strong>Aprendizaje Automático:</strong> La IA conoce las soluciones de tickets pasados.</li>
+                          <li><strong>Wiki Integrada:</strong> Consulta las FAQs antes de responder.</li>
+                          <li>Haz preguntas técnicas</li>
+                          <li>Soluciona errores de software</li>
+                          </ul>
+                      </div>
+                      </div>
+                  )}
+                  
+                  {activeTab === Tab.WIKI && (
+                      <WikiPanel />
+                  )}
 
-                {activeTab === Tab.STATS && isTechOrAdmin && (
-                    <StatsDashboard user={user} />
-                )}
+                  {activeTab === Tab.STATS && isTechOrAdmin && (
+                      <StatsDashboard user={user} />
+                  )}
 
-                {activeTab === Tab.ADMIN && isAdmin && (
-                    <AdminPanel />
-                )}
-            </>
-          )}
+                  {activeTab === Tab.ADMIN && isAdmin && (
+                      <AdminPanel />
+                  )}
+              </>
+            )}
+          </Suspense>
         </div>
       </main>
     </div>

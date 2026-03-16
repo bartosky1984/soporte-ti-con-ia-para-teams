@@ -79,10 +79,10 @@ export const AdminPanel: React.FC = () => {
               <table className="w-full text-sm text-left">
                 <thead className="bg-gray-50 text-gray-600 font-medium border-b">
                   <tr>
-                    <th className="px-4 py-3">Usuario</th>
-                    <th className="px-4 py-3">Email</th>
-                    <th className="px-4 py-3">Rol Actual</th>
-                    <th className="px-4 py-3 text-right">Acciones</th>
+                    <th scope="col" className="px-4 py-3">Usuario</th>
+                    <th scope="col" className="px-4 py-3">Email</th>
+                    <th scope="col" className="px-4 py-3">Rol Actual</th>
+                    <th scope="col" className="px-4 py-3 text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -107,33 +107,36 @@ export const AdminPanel: React.FC = () => {
                         {userItem.role !== UserRole.ADMIN && (
                           <div className="flex justify-end gap-2">
                             {userItem.role === UserRole.USER && (
-                              <button
-                                onClick={() => handleUpdateRole(userItem.id, UserRole.TECHNICIAN)}
-                                disabled={loading}
-                                className="text-xs bg-teams-purple text-white px-3 py-1.5 rounded hover:bg-opacity-90 transition-all font-medium"
-                              >
-                                {loading && <ICONS.Spinner size={12} className="inline mr-1" />}
-                                Convertir en Técnico
-                              </button>
+                                <button
+                                  onClick={() => handleUpdateRole(userItem.id, UserRole.TECHNICIAN)}
+                                  disabled={loading}
+                                  className="text-xs bg-teams-purple text-white px-3 py-1.5 rounded hover:bg-opacity-90 transition-all font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-teams-purple"
+                                  aria-label={`Convertir a ${userItem.name} en Técnico`}
+                                >
+                                  {loading && <ICONS.Spinner size={12} aria-hidden="true" className="inline mr-1" />}
+                                  Convertir en Técnico
+                                </button>
                             )}
 
                             {userItem.role === UserRole.TECHNICIAN && (
                               <>
-                                <button
-                                  onClick={() => handleUpdateRole(userItem.id, UserRole.LEAD_TECHNICIAN)}
-                                  disabled={loading}
-                                  className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700 transition-all font-medium"
-                                >
-                                  {loading && <ICONS.Spinner size={12} className="inline mr-1" />}
-                                  Promover a Jefe
-                                </button>
-                                <button
-                                  onClick={() => handleUpdateRole(userItem.id, UserRole.USER)}
-                                  disabled={loading}
-                                  className="text-[10px] text-gray-500 hover:text-red-600 px-2 py-1 transition-all border border-gray-200 rounded hover:border-red-100"
-                                >
-                                  Quitar Permisos
-                                </button>
+                                  <button
+                                    onClick={() => handleUpdateRole(userItem.id, UserRole.LEAD_TECHNICIAN)}
+                                    disabled={loading}
+                                    className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700 transition-all font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                                    aria-label={`Promover a ${userItem.name} a Jefe de Soporte`}
+                                  >
+                                    {loading && <ICONS.Spinner size={12} aria-hidden="true" className="inline mr-1" />}
+                                    Promover a Jefe
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateRole(userItem.id, UserRole.USER)}
+                                    disabled={loading}
+                                    className="text-[10px] text-gray-500 hover:text-red-600 px-2 py-1 transition-all border border-gray-200 rounded hover:border-red-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-red-400"
+                                    aria-label={`Quitar permisos técnicos a ${userItem.name}`}
+                                  >
+                                    Quitar Permisos
+                                  </button>
                               </>
                             )}
 
@@ -176,22 +179,25 @@ export const AdminPanel: React.FC = () => {
               Clasificaciones
             </h3>
             
-            <form onSubmit={handleAddClassification} className="bg-gray-50 p-4 rounded-md border border-gray-200 mb-6">
-              <h3 className="text-xs font-medium mb-3 text-gray-500 uppercase">Agregar Criterio</h3>
+            <form onSubmit={handleAddClassification} className="bg-gray-50 p-4 rounded-md border border-gray-200 mb-6" aria-labelledby="add-classification-title">
+              <h3 id="add-classification-title" className="text-xs font-medium mb-3 text-gray-500 uppercase">Agregar Criterio</h3>
               <div className="flex flex-col gap-2">
+                <label htmlFor="classification-input" className="sr-only">Nombre de la nueva clasificación</label>
                 <input 
+                  id="classification-input"
                   type="text" 
                   placeholder="Ej: Fallo Hardware"
                   value={newClassificationName}
                   onChange={(e) => setNewClassificationName(e.target.value)}
-                  className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm"
+                  className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-teams-purple outline-none"
                   required
                 />
                 <button 
                   type="submit" 
-                  className="bg-teams-purple text-white px-4 py-2 rounded text-sm hover:bg-opacity-90 flex items-center"
+                  className="bg-teams-purple text-white px-4 py-2 rounded text-sm hover:bg-opacity-90 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
+                  aria-label="Agregar nueva clasificación"
                 >
-                  <span className="mr-1"><ICONS.Plus /></span>
+                  <span className="mr-1" aria-hidden="true"><ICONS.Plus /></span>
                   Agregar
                 </button>
               </div>
@@ -205,10 +211,11 @@ export const AdminPanel: React.FC = () => {
                     <div className="text-sm font-medium text-gray-800">{classification.name}</div>
                     <button 
                       onClick={() => handleRemoveClassification(classification.id)}
-                      className="text-gray-400 hover:text-red-500 p-1"
+                      className="text-gray-400 hover:text-red-500 p-1 focus:outline-none focus-visible:ring-1 focus-visible:ring-red-400 rounded"
+                      aria-label={`Eliminar clasificación: ${classification.name}`}
                       title="Eliminar Clasificación"
                     >
-                      <ICONS.Trash />
+                      <ICONS.Trash aria-hidden="true" />
                     </button>
                   </div>
                 ))}

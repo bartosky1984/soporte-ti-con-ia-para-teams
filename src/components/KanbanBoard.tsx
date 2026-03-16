@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Ticket, TicketStatus, TicketClassification } from '../types';
+import { Ticket, TicketStatus, TicketClassification, User } from '../types';
 import { classificationService } from '../services/classificationService';
 import { ICONS } from '../constants';
 
@@ -8,6 +8,7 @@ interface KanbanBoardProps {
   onStatusChange: (id: number, status: TicketStatus) => void;
   onSelectTicket: (ticket: Ticket) => void;
   onClassificationChange?: (id: number, classificationId: string) => void;
+  currentUser?: User | null;
 }
 
 const statusConfig = {
@@ -16,7 +17,13 @@ const statusConfig = {
   [TicketStatus.RESOLVED]: { title: 'Resuelto', color: 'border-green-500', bg: 'bg-green-50' },
 };
 
-export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChange, onSelectTicket, onClassificationChange }) => {
+export const KanbanBoard: React.FC<KanbanBoardProps> = ({ 
+  tickets, 
+  onStatusChange, 
+  onSelectTicket, 
+  onClassificationChange,
+  currentUser
+}) => {
   const [draggedTicketId, setDraggedTicketId] = useState<number | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<TicketStatus | null>(null);
   const [dragOverClassification, setDragOverClassification] = useState<string | null>(null);
@@ -108,7 +115,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
     }
   };
 
-  const renderTicketCard = (ticket: Ticket) => {
+   const renderTicketCard = (ticket: Ticket) => {
     const hasUnread = (ticket.unreadCount || 0) > 0;
     const messageCount = ticket.messageCount || 0;
 
@@ -131,9 +138,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
         </div>
         
         <h4 className={`text-sm text-gray-800 line-clamp-2 mb-2 ${hasUnread ? 'font-bold' : ''}`}>
-          {ticket.descripcion}
+          {ticket.titulo || ticket.descripcion}
         </h4>
-        
+
         <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-50">
           <div className="text-[10px] text-gray-400 truncate max-w-[120px]">
              {ticket.userName}
@@ -145,9 +152,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
                 {classifications.find(c => c.id === ticket.classificationId)?.name.split(' ')[0]}
               </span>
             )}
+            {ticket.hasAttachments && (
+              <div className="text-gray-400" title="Contiene adjuntos">
+                <ICONS.Paperclip size={10} />
+              </div>
+            )}
             {messageCount > 0 && (
               <div className={`flex items-center space-x-1 text-[10px] px-1.5 py-0.5 rounded ${hasUnread ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-400'}`}>
-                <ICONS.MessageCircle />
+                <ICONS.MessageCircle size={10} />
                 <span>{messageCount}</span>
               </div>
             )}

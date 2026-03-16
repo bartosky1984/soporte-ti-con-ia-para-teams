@@ -18,6 +18,7 @@ export interface Ticket {
   id: number;
   userId: string; // ID of the user who created the ticket
   userName: string; // Name of the user
+  titulo?: string; // Optional title for the ticket
   tipo: TicketType;
   descripcion: string;
   estado: TicketStatus;
@@ -31,6 +32,8 @@ export interface Ticket {
   unreadCount?: number; // Calculated property for UI
   hasMessages?: boolean; // Calculated property for UI
   messageCount?: number; // Total messages count
+  attachmentUrl?: string; // URL for ticket attachment
+  hasAttachments?: boolean; // Calculated: has file in ticket or any comment
 }
 
 export interface ITHealthStats {
@@ -51,6 +54,7 @@ export interface TicketComment {
   userRole: UserRole;
   text: string;
   timestamp: string;
+  attachmentUrl?: string; // URL for comment attachment
 }
 
 export interface ChatMessage {

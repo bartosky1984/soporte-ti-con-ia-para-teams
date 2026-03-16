@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://ppbrdcqbmtgqrwvzakov.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwYnJkY3FibXRncXJ3dnpha292Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MjE4MTAsImV4cCI6MjA4ODk5NzgxMH0.BJibRjM5tpKGGR3SCB-Shf4nIbRH4JMxmzPTdlW1kjw';
+// Usar variables de entorno inyectadas vía Vite (definidas en vite.config.ts)
+const supabaseUrl = (typeof process !== 'undefined' && process.env.SUPABASE_URL) || import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseKey = (typeof process !== 'undefined' && process.env.SUPABASE_KEY) || import.meta.env.VITE_SUPABASE_KEY || '';
+
+if (!supabaseUrl || !supabaseKey) {
+  console.warn("Supabase credentials not found in environment variables. Database features might be disabled.");
+}
 
 export const supabase = createClient(supabaseUrl, supabaseKey);

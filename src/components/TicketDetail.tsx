@@ -5,6 +5,7 @@ import { classificationService } from '../services/classificationService';
 import { userService } from '../services/userService';
 import { supabase } from '../services/supabaseClient';
 import { ICONS } from '../constants';
+import { storageService } from '../services/storageService';
 
 interface TicketDetailProps {
   ticket: Ticket;
@@ -37,7 +38,10 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
   const [classifications, setClassifications] = useState<TicketClassification[]>([]);
   const [technicians, setTechnicians] = useState<User[]>([]);
   const [assigning, setAssigning] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canManage = currentUser.role === UserRole.TECHNICIAN || currentUser.role === UserRole.LEAD_TECHNICIAN || currentUser.role === UserRole.ADMIN;
   const canAssign = currentUser.role === UserRole.LEAD_TECHNICIAN || currentUser.role === UserRole.ADMIN;
@@ -95,16 +99,34 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
   const handleSubmitComment = async (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
-    if (!newComment.trim()) return;
+    if (!newComment.trim() && !selectedFile) return;
+    
     setSending(true);
     try {
-      const added = await ticketService.addComment(ticket.id, newComment, currentUser);
+      let attachmentUrl = undefined;
+      if (selectedFile) {
+        setIsUploading(true);
+        attachmentUrl = await storageService.uploadFile(selectedFile) || undefined;
+        setIsUploading(false);
+      }
+      
+      const added = await ticketService.addComment(ticket.id, newComment, currentUser, attachmentUrl);
       setComments(prev => [...prev, added]);
       setNewComment('');
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error) {
       console.error("Error sending comment:", error);
     } finally {
       setSending(false);
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
     }
   };
 
@@ -150,17 +172,47 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       {/* Header */}
       <div className="p-4 border-b border-gray-200 flex justify-between items-start bg-gray-50 rounded-t-lg">
         <div className="flex items-start gap-3">
-          <button onClick={onClose} className="mt-1 text-gray-500 hover:text-teams-purple">
-            <ICONS.ArrowLeft />
+          <button 
+            onClick={onClose} 
+            className="mt-1 text-gray-500 hover:text-teams-purple focus:outline-none focus:ring-2 focus:ring-teams-purple rounded"
+            aria-label="Cerrar detalles del ticket y volver a la lista"
+          >
+            <ICONS.ArrowLeft aria-hidden="true" />
           </button>
           <div>
             <div className="flex items-center space-x-2 mb-1">
-              <span className="text-sm font-mono text-gray-500">#{ticket.id}</span>
-              <span className={`px-2 py-0.5 text-xs rounded-full border font-medium ${statusColors[ticket.estado]}`}>
+              <span className="text-sm font-mono text-gray-500" aria-label={`ID del ticket ${ticket.id}`}>#{ticket.id}</span>
+              <span className={`px-2 py-0.5 text-xs rounded-full border font-medium ${statusColors[ticket.estado]}`} aria-label={`Estado: ${ticket.estado}`}>
                 {ticket.estado}
               </span>
             </div>
             <h2 className="font-semibold text-gray-800">{ticket.descripcion}</h2>
+            
+            {/* Attachment Preview */}
+            {ticket.attachmentUrl && (
+              <div className="mt-2">
+                <a 
+                  href={ticket.attachmentUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100 transition-colors group"
+                  aria-label="Ver imagen adjunta en tamaño completo"
+                >
+                  {ticket.attachmentUrl.startsWith('data:image') || ticket.attachmentUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                    <div className="relative">
+                      <img src={ticket.attachmentUrl} alt="Adjunto del ticket" className="h-24 w-auto rounded border shadow-sm object-cover transition-transform group-hover:scale-[1.02]" />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded transition-all flex items-center justify-center">
+                        <ICONS.ExternalLink size={16} className="text-white opacity-0 group-hover:opacity-100" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs text-teams-purple px-2">
+                      <ICONS.Image size={16} /> <span>Ver Adjunto</span>
+                    </div>
+                  )}
+                </a>
+              </div>
+            )}
             
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs text-gray-500">
@@ -177,10 +229,11 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
               {/* Assignment Select */}
               {canAssign ? (
                 <div className="flex items-center gap-2">
-                  <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                    <ICONS.User size={12} /> Asignado a:
+                  <label htmlFor="assignee-select" className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                    <ICONS.User size={12} aria-hidden="true" /> Asignado a:
                   </label>
                   <select
+                    id="assignee-select"
                     value={ticket.technicianId || ''}
                     onChange={handleAssignTechnician}
                     disabled={assigning}
@@ -203,10 +256,11 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
               {/* Classification Dropdown */}
               {canManage && (
                 <div className="flex items-center gap-2">
-                  <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                    <ICONS.LayoutGrid size={12} /> Clasificación:
+                  <label htmlFor="classification-select" className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                    <ICONS.LayoutGrid size={12} aria-hidden="true" /> Clasificación:
                   </label>
                   <select 
+                    id="classification-select"
                     value={ticket.classificationId || ''} 
                     onChange={handleClassificationChange}
                     className={`text-xs border rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-teams-purple ${
@@ -219,7 +273,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                     ))}
                   </select>
                   {!ticket.classificationId && (
-                    <span className="text-[10px] text-red-500 font-medium italic">Requerido para resolver</span>
+                    <span className="text-[10px] text-red-500 font-medium italic" aria-live="assertive">Requerido para resolver</span>
                   )}
                 </div>
               )}
@@ -255,16 +309,22 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-100 bg-white">
+      <div className="flex border-b border-gray-100 bg-white" role="tablist">
         <button 
           onClick={() => setActiveSubTab('comments')}
           className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${activeSubTab === 'comments' ? 'border-teams-purple text-teams-purple' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          role="tab"
+          aria-selected={activeSubTab === 'comments'}
+          aria-controls="comments-panel"
         >
           Conversación ({comments.length})
         </button>
         <button 
           onClick={() => setActiveSubTab('history')}
           className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${activeSubTab === 'history' ? 'border-teams-purple text-teams-purple' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          role="tab"
+          aria-selected={activeSubTab === 'history'}
+          aria-controls="history-panel"
         >
           Historial de Cambios ({audits.length})
         </button>
@@ -273,10 +333,11 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
         {activeSubTab === 'comments' ? (
-          <div className="space-y-4">
+          <div id="comments-panel" role="tabpanel" aria-label="Conversación del ticket" className="space-y-4" aria-live="polite">
             {loading ? (
               <div className="flex justify-center py-4 text-gray-400">
-                <ICONS.Spinner />
+                <ICONS.Spinner aria-hidden="true" className="animate-spin" />
+                <span className="sr-only">Cargando comentarios...</span>
               </div>
             ) : comments.length === 0 ? (
               <div className="text-center text-gray-400 text-sm py-8">
@@ -305,6 +366,24 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                         </span>
                       </div>
                       <p>{comment.text}</p>
+                      {comment.attachmentUrl && (
+                        <div className="mt-2 pt-2 border-t border-black border-opacity-5">
+                          <a 
+                            href={comment.attachmentUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="block rounded overflow-hidden border border-black border-opacity-10 hover:opacity-90 transition-opacity"
+                          >
+                            {comment.attachmentUrl.startsWith('data:image') || comment.attachmentUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                              <img src={comment.attachmentUrl} alt="Adjunto" className="max-h-48 w-auto object-cover" />
+                            ) : (
+                              <div className="p-2 bg-white flex items-center gap-2 text-xs">
+                                <ICONS.Image size={14} /> <span>Ver archivo adjunto</span>
+                              </div>
+                            )}
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -313,10 +392,10 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             <div ref={commentsEndRef} />
           </div>
         ) : (
-          <div className="space-y-3">
+          <div id="history-panel" role="tabpanel" aria-label="Historial de cambios" className="space-y-3">
             {audits.map((audit) => (
               <div key={audit.id} className="flex gap-3 bg-white p-3 rounded border border-gray-100 shadow-sm items-start">
-                <div className="bg-blue-50 p-1.5 rounded text-blue-600 mt-1">
+                <div className="bg-blue-50 p-1.5 rounded text-blue-600 mt-1" aria-hidden="true">
                   <ICONS.Chart size={14} />
                 </div>
                 <div>
@@ -324,9 +403,9 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                     {audit.user_name} cambió el {audit.action === 'STATUS_CHANGE' ? 'estado' : 'detalle'}
                   </div>
                   <div className="text-[11px] text-gray-500 flex items-center gap-2 mt-1">
-                    <span className="bg-gray-100 px-1 border rounded">{audit.old_value}</span>
-                    <ICONS.ArrowRight size={10} />
-                    <span className="bg-blue-50 text-blue-700 px-1 border border-blue-100 rounded font-medium">{audit.new_value}</span>
+                    <span className="bg-gray-100 px-1 border rounded" aria-label={`Valor anterior: ${audit.old_value}`}>{audit.old_value}</span>
+                    <ICONS.ArrowRight size={10} aria-hidden="true" />
+                    <span className="bg-blue-50 text-blue-700 px-1 border border-blue-100 rounded font-medium" aria-label={`Sustituido por: ${audit.new_value}`}>{audit.new_value}</span>
                   </div>
                   <div className="text-[9px] text-gray-400 mt-1.5">
                     {new Date(audit.created_at).toLocaleString()}
@@ -347,25 +426,65 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       {activeSubTab === 'comments' && (
         <div className="p-4 border-t border-gray-200 bg-white shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
           <form onSubmit={handleSubmitComment} className="flex gap-3 items-end">
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Escribe un mensaje o nota técnica..."
-              className="flex-1 border border-gray-300 rounded-md p-2 text-sm focus:ring-1 focus:ring-teams-purple focus:border-teams-purple outline-none resize-none h-20 transition-all shadow-inner"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmitComment(e);
-                }
-              }}
-            />
-            <button
-              type="submit"
-              disabled={!newComment.trim() || sending}
-              className="bg-teams-purple text-white p-3 rounded-md hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transition-all"
-            >
-              {sending ? <ICONS.Spinner className="animate-spin" /> : <ICONS.Send />}
-            </button>
+            <div className="flex-1">
+              <label htmlFor="chat-message-input" className="sr-only">Escribe un mensaje</label>
+              {selectedFile && (
+                <div className="mb-2 p-2 bg-gray-100 rounded flex justify-between items-center text-xs border border-gray-200">
+                  <div className="flex items-center gap-2 truncate">
+                    <ICONS.Image size={14} className="text-teams-purple" />
+                    <span className="truncate">{selectedFile.name}</span>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => {setSelectedFile(null); if(fileInputRef.current) fileInputRef.current.value = '';}}
+                    className="text-red-500 hover:text-red-700 font-bold px-1"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+              <textarea
+                id="chat-message-input"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Escribe un mensaje o nota técnica..."
+                className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-1 focus:ring-teams-purple focus:border-teams-purple outline-none resize-none h-20 transition-all shadow-inner"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmitComment(e);
+                  }
+                }}
+                aria-required="true"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={sending || isUploading}
+                className="bg-gray-100 text-gray-600 p-2 rounded-md hover:bg-gray-200 transition-all focus:outline-none flex items-center justify-center border border-gray-300 shadow-sm"
+                title="Adjuntar archivo"
+                aria-label="Adjuntar archivo o imagen"
+              >
+                <ICONS.Image size={18} aria-hidden="true" />
+              </button>
+              <input 
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept="image/*"
+              />
+              <button
+                type="submit"
+                disabled={(!newComment.trim() && !selectedFile) || sending || isUploading}
+                className="bg-teams-purple text-white p-3 rounded-md hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-purple-400"
+                aria-label="Enviar mensaje"
+              >
+                {sending || isUploading ? <ICONS.Spinner aria-hidden="true" className="animate-spin" /> : <ICONS.Send aria-hidden="true" />}
+              </button>
+            </div>
           </form>
         </div>
       )}

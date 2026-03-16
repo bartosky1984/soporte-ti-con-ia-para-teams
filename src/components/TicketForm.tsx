@@ -2,9 +2,10 @@ import React, { useState, useRef } from 'react';
 import { TicketType } from '../types';
 import { ICONS } from '../constants';
 import { geminiService } from '../services/geminiService';
+import { storageService } from '../services/storageService';
 
 interface TicketFormProps {
-  onSubmit: (data: { tipo: TicketType; descripcion: string }) => Promise<void>;
+  onSubmit: (data: { tipo: TicketType; descripcion: string; attachmentUrl?: string }) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -14,6 +15,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -23,7 +25,12 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
 
     setIsSubmitting(true);
     try {
-      await onSubmit({ tipo, descripcion });
+      let attachmentUrl = undefined;
+      if (selectedFile) {
+        setAiSuggestion("Subiendo archivos...");
+        attachmentUrl = await storageService.uploadFile(selectedFile) || undefined;
+      }
+      await onSubmit({ tipo, descripcion, attachmentUrl });
     } finally {
       setIsSubmitting(false);
     }
@@ -32,6 +39,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setSelectedFile(file);
 
     setIsAnalyzing(true);
     setAiSuggestion('');
@@ -75,11 +83,13 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
       <h2 className="text-lg font-semibold mb-4 text-teams-dark">Crear Nuevo Ticket</h2>
       
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+        <label htmlFor="ticket-type" className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
         <select
+          id="ticket-type"
           value={tipo}
           onChange={(e) => setTipo(e.target.value as TicketType)}
           className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-teams-purple focus:outline-none bg-white text-gray-900"
+          aria-required="true"
         >
           {Object.values(TicketType).map((t) => (
             <option key={t} value={t}>{t}</option>
@@ -88,21 +98,23 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
       </div>
 
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="ticket-description" className="block text-sm font-medium text-gray-700 mb-1">
           Descripción
-          {isAnalyzing && <span className="ml-2 text-xs text-teams-purple animate-pulse">IA Analizando...</span>}
+          {isAnalyzing && <span className="ml-2 text-xs text-teams-purple animate-pulse" aria-live="polite">IA Analizando...</span>}
         </label>
         <textarea
+          id="ticket-description"
           value={descripcion}
           onChange={(e) => setDescripcion(e.target.value)}
           onBlur={handleSmartCheck}
           rows={4}
           className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-teams-purple focus:outline-none bg-white text-gray-900 placeholder-gray-500"
           placeholder="Describe tu problema..."
+          aria-required="true"
         />
         {aiSuggestion && (
-          <div className="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100 flex items-start">
-            <span className="mr-1 mt-0.5"><ICONS.Sparkles /></span>
+          <div className="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100 flex items-start" aria-live="polite">
+            <span className="mr-1 mt-0.5" aria-hidden="true"><ICONS.Sparkles /></span>
             <span>{aiSuggestion}</span>
           </div>
         )}
@@ -113,13 +125,24 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isAnalyzing}
-          className="flex items-center text-sm text-teams-purple hover:text-purple-800 transition-colors"
+          className="flex items-center text-sm text-teams-purple hover:text-purple-800 transition-colors focus:outline-none focus-visible:underline"
+          aria-label="Subir captura de pantalla para análisis automático por IA"
         >
-          <span className="mr-1"><ICONS.Image /></span>
-          Subir Captura (Análisis IA)
+          <span className="mr-1" aria-hidden="true"><ICONS.Image /></span>
+          {selectedFile ? `Imagen: ${selectedFile.name}` : 'Subir Captura (Análisis IA)'}
         </button>
+        {selectedFile && (
+          <button 
+            type="button" 
+            onClick={() => {setSelectedFile(null); if(fileInputRef.current) fileInputRef.current.value = '';}}
+            className="ml-2 text-xs text-red-500 hover:text-red-700"
+          >
+            Eliminar
+          </button>
+        )}
         <input
           type="file"
+          id="screenshot-upload"
           ref={fileInputRef}
           className="hidden"
           accept="image/*"

@@ -26,7 +26,17 @@ export default defineConfig(({ mode }) => {
       },
       build: {
         outDir: 'dist',
-        sourcemap: true
+        sourcemap: true,
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'vendor': ['react', 'react-dom'],
+              'charts': ['recharts'],
+              'supabase': ['@supabase/supabase-js'],
+              'ai-engine': ['@google/generative-ai']
+            }
+          }
+        }
       }
     };
 });

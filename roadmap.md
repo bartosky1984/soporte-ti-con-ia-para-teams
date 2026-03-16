@@ -34,16 +34,19 @@ Este documento detalla los pasos seguidos y los hitos pendientes para completar 
 - [x] **Notificaciones Persistentes**: Sistema de alertas guardado en DB (Supabase) y badges de lectura.
 - [x] **Sincronización Realtime**: Evolucionar polling a Supabase Realtime para alertar nuevos comentarios y estados (zero-latency).
 - [x] **Población de Datos**: Inyección de datos realistas (8+ tickets, múltiples usuarios) para testing de flujos técnicos.
-- [ ] **Búsqueda Avanzada**: Filtros por fecha, usuario y texto completo.
-- [ ] **Adjuntos**: Integración con Supabase Storage para subir capturas de pantalla de errores.
+- [x] **Búsqueda Avanzada**: Filtros por fecha, usuario y texto completo. (UI & Client-side filtering)
+- [x] **Adjuntos**: Integración en creación de tickets y chat de soporte (Supabase Storage + Previsualización).
 - [ ] **Modo Offline Mejorado**: Sincronización en segundo plano al recuperar conexión.
 
 ## 🚀 Fase 5: Producción & Feedback (En Proceso)
 - [x] Configuración de variables de entorno para Producción (Vercel).
 - [x] Corrección de errores de compilación y tipos para entornos productivos.
 - [x] Despliegue funcional en Vercel.
-- [ ] Optimización de assets y bundle size (Code-splitting).
-- [ ] Auditoría de accesibilidad (WCAG AA).
+- [x] Optimización de assets y bundle size (Code-splitting).
+- [x] Auditoría de accesibilidad (WCAG AA).
+- [x] **Dashboard de Usuario**: Panel con KPIs y estadísticas personalizadas para empleados.
+- [x] **Kanban para Empleados**: Tablero visual filtrado por tickets propios con restricciones de rol.
+- [x] **Sincronización en Vivo**: Actualización instantánea de estados de tickets en el Panel y Kanban.
 
 ---
 *Este roadmap es un documento vivo y se actualizará a medida que avancemos en los objetivos.*

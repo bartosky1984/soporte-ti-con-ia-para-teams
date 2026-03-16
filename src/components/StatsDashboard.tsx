@@ -50,9 +50,10 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({ user }) => {
         </div>
         <button 
           onClick={loadStats}
-          className="text-sm bg-white border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-50 flex items-center gap-2"
+          className="text-sm bg-white border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-50 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-teams-purple"
+          aria-label="Actualizar datos de las estadísticas"
         >
-          <ICONS.Sparkles /> Actualizar Datos
+          <ICONS.Sparkles aria-hidden="true" /> Actualizar Datos
         </button>
       </div>
 
@@ -88,10 +89,10 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({ user }) => {
         {/* Classification Chart */}
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <span className="text-teams-purple"><ICONS.LayoutGrid /></span>
+            <span className="text-teams-purple" aria-hidden="true"><ICONS.LayoutGrid /></span>
             Problemas Técnicos vs Falta de Formación
           </h3>
-          <div className="h-64">
+          <div className="h-64" role="img" aria-label="Gráfico circular mostrando la distribución entre problemas técnicos y falta de formación">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -139,16 +140,16 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({ user }) => {
         {/* Top Users - Lack of Training */}
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm lg:col-span-2">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <span className="text-red-600"><ICONS.User /></span>
+            <span className="text-red-600" aria-hidden="true"><ICONS.User /></span>
             Usuarios con Mayor Necesidad de Formación
           </h3>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-sm text-left" aria-label="Usuarios que requieren capacitación">
               <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3">Nombre del Usuario</th>
-                  <th className="px-6 py-3">Tickets por "Falta de Formación"</th>
-                  <th className="px-6 py-3">Acción Recomendada</th>
+                  <th scope="col" className="px-6 py-3">Nombre del Usuario</th>
+                  <th scope="col" className="px-6 py-3">Tickets por "Falta de Formación"</th>
+                  <th scope="col" className="px-6 py-3">Acción Recomendada</th>
                 </tr>
               </thead>
               <tbody>
@@ -182,8 +183,8 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({ user }) => {
 };
 
 const MetricCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; color: string }> = ({ title, value, icon, color }) => (
-  <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-    <div className={`p-3 rounded-lg bg-gray-50 ${color}`}>
+  <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4" role="status" aria-label={`${title}: ${value}`}>
+    <div className={`p-3 rounded-lg bg-gray-50 ${color}`} aria-hidden="true">
       {icon}
     </div>
     <div>

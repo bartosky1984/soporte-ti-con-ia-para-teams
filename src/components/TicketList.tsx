@@ -27,9 +27,9 @@ export const TicketList: React.FC<TicketListProps> = ({
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-12">
+      <div className="flex justify-center items-center py-12" aria-live="polite">
         <div className="text-teams-purple animate-spin">
-           <ICONS.Spinner />
+           <ICONS.Spinner aria-hidden="true" />
         </div>
         <span className="ml-2 text-gray-500">Cargando tickets...</span>
       </div>
@@ -38,7 +38,7 @@ export const TicketList: React.FC<TicketListProps> = ({
 
   if (tickets.length === 0) {
     return (
-      <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+      <div className="text-center py-12 bg-white rounded-lg border border-gray-200" aria-live="polite">
         <p className="text-gray-500">No se encontraron tickets activos.</p>
         <p className="text-sm text-gray-400 mt-1">Crea un nuevo ticket para comenzar.</p>
       </div>
@@ -46,24 +46,24 @@ export const TicketList: React.FC<TicketListProps> = ({
   }
 
   return (
-    <div className="space-y-4">
+    <ul className="space-y-4" role="list" aria-label="Lista de tickets de soporte">
       {tickets.map((ticket) => {
         const hasUnread = (ticket.unreadCount || 0) > 0;
         const messageCount = ticket.messageCount || 0;
         
         return (
-          <div 
+          <li 
             key={ticket.id} 
             className={`bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow duration-200 ${hasUnread ? 'border-l-4 border-l-blue-500' : 'border-gray-200'}`}
           >
             <div className="flex justify-between items-start">
-              <div className="flex-1 cursor-pointer" onClick={() => onSelectTicket(ticket)}>
+              <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-1">
-                  <span className="text-xs font-mono text-gray-400">#{ticket.id}</span>
-                  <span className={`px-2 py-0.5 text-xs rounded-full border font-medium ${statusColors[ticket.estado]}`}>
+                  <span className="text-xs font-mono text-gray-400" aria-label={`ID del ticket ${ticket.id}`}>#{ticket.id}</span>
+                  <span className={`px-2 py-0.5 text-xs rounded-full border font-medium ${statusColors[ticket.estado]}`} aria-label={`Estado: ${ticket.estado}`}>
                     {ticket.estado}
                   </span>
-                  <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
+                  <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded" aria-label={`Tipo: ${ticket.tipo}`}>
                     {ticket.tipo}
                   </span>
                   
@@ -73,7 +73,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                       ticket.prioridad === 'Alta' ? 'bg-orange-100 text-orange-700' :
                       ticket.prioridad === 'Baja' ? 'bg-gray-100 text-gray-600' :
                       'bg-blue-100 text-blue-700'
-                    }`}>
+                    }`} aria-label={`Prioridad: ${ticket.prioridad}`}>
                       {ticket.prioridad}
                     </span>
                   )}
@@ -84,8 +84,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                       hasUnread 
                         ? 'bg-blue-100 text-blue-700' 
                         : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      {/* We use inline SVG here to control the fill property dynamically */}
+                    }`} aria-label={`${messageCount} mensajes totales, ${hasUnread ? `${ticket.unreadCount} nuevos` : 'ninguno nuevo'}`}>
                       <svg 
                         xmlns="http://www.w3.org/2000/svg" 
                         width="14" 
@@ -96,44 +95,59 @@ export const TicketList: React.FC<TicketListProps> = ({
                         strokeWidth="2" 
                         strokeLinecap="round" 
                         strokeLinejoin="round"
+                        aria-hidden="true"
                       >
                         <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                       </svg>
                       <span>{messageCount}</span>
-                      {hasUnread && <span className="text-[10px] font-bold ml-1">({ticket.unreadCount} nuevos)</span>}
+                      {hasUnread && <span className="text-[10px] font-bold ml-1" aria-hidden="true">({ticket.unreadCount} nuevos)</span>}
+                    </span>
+                  )}
+                  
+                  {ticket.hasAttachments && (
+                    <span className="text-gray-400" title="Contiene archivos adjuntos">
+                      <ICONS.Paperclip size={14} aria-hidden="true" />
                     </span>
                   )}
                 </div>
-                <h3 className={`text-gray-800 font-medium mt-1 hover:text-teams-purple transition-colors ${hasUnread ? 'font-bold' : ''}`}>
-                  {ticket.descripcion}
-                </h3>
-                <p className="text-xs text-gray-400 mt-2 flex items-center gap-2">
-                  <span>{ticket.userName} · {new Date(ticket.fecha).toLocaleString()}</span>
-                  {ticket.technicianName && (
-                    <span className="flex items-center gap-1 text-teams-purple bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100">
-                      <ICONS.User size={10} /> {ticket.technicianName}
-                    </span>
-                  )}
-                </p>
+
+                <button 
+                  onClick={() => onSelectTicket(ticket)}
+                  className={`text-left w-full focus:outline-none focus:ring-2 focus:ring-teams-purple rounded-md p-1 -ml-1 transition-all group`}
+                  aria-label={`Ver detalles del ticket #${ticket.id}: ${ticket.descripcion}`}
+                >
+                  <h3 className={`text-gray-800 font-medium hover:text-teams-purple transition-colors ${hasUnread ? 'font-bold' : ''}`}>
+                    {ticket.descripcion}
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-1 flex items-center gap-2">
+                    <span>{ticket.userName} · {new Date(ticket.fecha).toLocaleString()}</span>
+                    {ticket.technicianName && (
+                      <span className="flex items-center gap-1 text-teams-purple bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100">
+                        <ICONS.User size={10} aria-hidden="true" /> {ticket.technicianName}
+                      </span>
+                    )}
+                  </p>
+                </button>
               </div>
               
               <div className="flex flex-col space-y-2 ml-4 items-end">
                  <button 
                     onClick={() => onSelectTicket(ticket)}
-                    className={`p-1 flex items-center text-xs mb-1 ${hasUnread ? 'text-blue-600 font-semibold' : 'text-gray-400 hover:text-teams-purple'}`}
-                    title="Ver conversación"
+                    className={`p-1 flex items-center text-xs mb-1 focus:outline-none focus:ring-1 focus:ring-teams-purple rounded ${hasUnread ? 'text-blue-600 font-semibold' : 'text-gray-400 hover:text-teams-purple'}`}
+                    aria-label={`Ver conversación del ticket #${ticket.id}`}
                  >
-                   <ICONS.MessageCircle />
+                   <ICONS.MessageCircle aria-hidden="true" />
                    <span className="ml-1">Ver</span>
                  </button>
 
                  {/* Only show status action buttons if user is Admin or Technician */}
                  {canManage && (
-                  <>
+                  <div className="flex flex-col space-y-1">
                      {ticket.estado === TicketStatus.PENDING && (
                        <button
                          onClick={() => onStatusChange(ticket.id, TicketStatus.IN_PROGRESS)}
-                         className="text-xs bg-teams-purple text-white px-3 py-1 rounded hover:bg-opacity-90 transition-colors whitespace-nowrap"
+                         className="text-xs bg-teams-purple text-white px-3 py-1 rounded hover:bg-opacity-90 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-purple-400"
+                         aria-label={`Comenzar trabajo en ticket #${ticket.id}`}
                        >
                          Comenzar
                        </button>
@@ -142,7 +156,8 @@ export const TicketList: React.FC<TicketListProps> = ({
                      {ticket.estado === TicketStatus.IN_PROGRESS && (
                        <button
                          onClick={() => onStatusChange(ticket.id, TicketStatus.RESOLVED)}
-                         className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition-colors whitespace-nowrap"
+                         className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-green-400"
+                         aria-label={`Resolver ticket #${ticket.id}`}
                        >
                          Resolver
                        </button>
@@ -151,18 +166,19 @@ export const TicketList: React.FC<TicketListProps> = ({
                      {ticket.estado === TicketStatus.RESOLVED && (
                        <button
                          onClick={() => onStatusChange(ticket.id, TicketStatus.PENDING)}
-                         className="text-xs text-gray-500 hover:text-gray-700 underline whitespace-nowrap"
+                         className="text-xs text-gray-500 hover:text-gray-700 underline whitespace-nowrap focus:outline-none focus:ring-1 focus:ring-gray-400"
+                         aria-label={`Reabrir ticket #${ticket.id}`}
                        >
                          Reabrir
                        </button>
                      )}
-                  </>
+                  </div>
                  )}
               </div>
             </div>
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 };

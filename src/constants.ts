@@ -291,6 +291,30 @@ export const ICONS = {
     strokeLinejoin: "round",
     className
   }, React.createElement("polyline", { points: "6 9 12 15 18 9" })),
+  ChevronUp: ({ size = 20, className = "" }: IconProps) => React.createElement("svg", {
+    xmlns: "http://www.w3.org/2000/svg",
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "2",
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    className
+  }, React.createElement("polyline", { points: "18 15 12 9 6 15" })),
+  Filter: ({ size = 20, className = "" }: IconProps) => React.createElement("svg", {
+    xmlns: "http://www.w3.org/2000/svg",
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "2",
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    className
+  }, React.createElement("polygon", { points: "22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" })),
   Search: ({ size = 18, className = "" }: IconProps) => React.createElement("svg", {
     xmlns: "http://www.w3.org/2000/svg",
     width: size,
@@ -394,6 +418,34 @@ export const ICONS = {
     strokeLinejoin: "round",
     className
   }, React.createElement("path", { d: "M5 12h14m-7-7l7 7-7 7" })),
+  ExternalLink: ({ size = 18, className = "" }: IconProps) => React.createElement("svg", {
+    xmlns: "http://www.w3.org/2000/svg",
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "2",
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    className
+  }, [
+    React.createElement("path", { key: "p1", d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" }),
+    React.createElement("polyline", { key: "pl1", points: "15 3 21 3 21 9" }),
+    React.createElement("line", { key: "l1", x1: "10", y1: "14", x2: "21", y2: "3" })
+  ]),
+  Paperclip: ({ size = 18, className = "" }: IconProps) => React.createElement("svg", {
+    xmlns: "http://www.w3.org/2000/svg",
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "2",
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    className
+  }, React.createElement("path", { d: "m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.51a2 2 0 0 1-2.83-2.83l8.49-8.48" })),
   Send: ({ size = 18, className = "" }: IconProps) => React.createElement("svg", {
     xmlns: "http://www.w3.org/2000/svg",
     width: size,

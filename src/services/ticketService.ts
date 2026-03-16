@@ -41,7 +41,11 @@ export const ticketService = {
           .order('fecha', { ascending: false });
 
         if (error) throw error;
-        let tickets = data as Ticket[];
+        // Map snake_case to camelCase if necessary for all tickets
+        let tickets = (data as any[]).map(t => ({
+          ...t,
+          attachmentUrl: t.attachmentUrl || t.attachment_url
+        })) as Ticket[];
 
         if (currentUserId) {
           // Fetch counts and read status from Supabase
@@ -51,29 +55,67 @@ export const ticketService = {
           ]);
 
           // As RPC might not exist, let's use a more standard approach first
-          const { data: allComments } = await supabase.from('comments').select('ticketId, userId, timestamp');
+          const { data: allCommentsRaw } = await supabase.from('comments').select('*');
+          let allComments = (allCommentsRaw || []) as any[];
+
+          // Hybrid merge for comments in all metadata calculations
+          try {
+            const storedComments = localStorage.getItem(STORAGE_KEY_COMMENTS);
+            if (storedComments) {
+              const localComments: any[] = JSON.parse(storedComments);
+              localComments.forEach(lc => {
+                const exists = allComments.some(sc => 
+                  String(sc.id) === String(lc.id) || 
+                  (sc.timestamp === lc.timestamp && sc.text === lc.text)
+                );
+                if (!exists) allComments.push(lc);
+              });
+            }
+          } catch (e) { console.error("Local comments merge failed in getTickets", e); }
           
           const readReceipts = (readStatuses || []).reduce((acc: any, curr: any) => {
             acc[curr.ticketId] = new Date(curr.lastReadTime).getTime();
             return acc;
           }, {});
 
-          tickets = tickets.map(t => {
-            const ticketComments = (allComments || []).filter(c => c.ticketId === t.id);
-            const lastReadTime = readReceipts[t.id] || 0;
-            const unreadCount = ticketComments.filter(c => 
-              c.userId !== currentUserId && new Date(c.timestamp).getTime() > lastReadTime
-            ).length;
-            
-            return { 
-              ...t, 
-              unreadCount, 
-              hasMessages: ticketComments.length > 0, 
-              messageCount: ticketComments.length 
-            };
+              tickets = tickets.map(t => {
+                const ticketComments = (allComments || []).filter(c => c.ticketId === t.id);
+                const lastReadTime = readReceipts[t.id] || 0;
+                const unreadCount = ticketComments.filter(c => 
+                  c.userId !== currentUserId && new Date(c.timestamp).getTime() > lastReadTime
+                ).length;
+                
+                const hasAttachments = !!t.attachmentUrl || (ticketComments || []).some((c: any) => c.attachmentUrl || c.attachment_url);
+                
+                return { 
+                  ...t, 
+                  unreadCount, 
+                  hasMessages: ticketComments.length > 0, 
+                  messageCount: ticketComments.length,
+                  hasAttachments
+                };
+              });
+        }
+        
+        // Multi-layer enrichment: Merge with LocalStorage 
+        // This ensures attachments are visible even if Supabase columns are missing
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const localTickets: Ticket[] = JSON.parse(stored);
+          localTickets.forEach(lt => {
+            const index = tickets.findIndex(st => Number(st.id) === Number(lt.id));
+            if (index === -1) {
+              tickets.push(lt);
+            } else {
+              // If Supabase version is missing the attachment but local has it
+              if (lt.attachmentUrl && !tickets[index].attachmentUrl) {
+                tickets[index].attachmentUrl = lt.attachmentUrl;
+              }
+            }
           });
         }
-        return tickets;
+
+        return tickets.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
       } catch (e) {
         console.error("Supabase getTickets failed, falling back to localStorage", e);
       }
@@ -97,13 +139,15 @@ export const ticketService = {
         const unreadCount = ticketComments.filter(c =>
           c.userId !== currentUserId && new Date(c.timestamp).getTime() > lastReadTime
         ).length;
-        return { ...ticket, unreadCount, hasMessages: ticketComments.length > 0, messageCount: ticketComments.length };
+        const hasAttachments = !!ticket.attachmentUrl || !!ticket.attachment_url || ticketComments.some((c: any) => !!c.attachmentUrl || !!c.attachment_url);
+
+        return { ...ticket, unreadCount, hasMessages: ticketComments.length > 0, messageCount: ticketComments.length, hasAttachments };
       });
     }
     return tickets.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
   },
 
-  createTicket: async (data: { tipo: TicketType; descripcion: string }, user: User): Promise<Ticket> => {
+  createTicket: async (data: { tipo: TicketType; descripcion: string; attachmentUrl?: string }, user: User): Promise<Ticket> => {
     if (isDbEnabled) {
       try {
         // Detect priority
@@ -122,7 +166,9 @@ export const ticketService = {
           descripcion: data.descripcion,
           estado: TicketStatus.PENDING,
           prioridad: priority,
-          fecha: new Date().toISOString()
+          fecha: new Date().toISOString(),
+          attachmentUrl: data.attachmentUrl,
+          attachment_url: data.attachmentUrl
         };
 
         const { data: saved, error } = await supabase
@@ -135,7 +181,13 @@ export const ticketService = {
           console.error("Supabase insert error:", error);
           throw error;
         }
-        return saved as Ticket;
+        
+        // Map raw database result (snake_case) to our camelCase interface
+        const savedRaw = saved as any;
+        return {
+          ...savedRaw,
+          attachmentUrl: savedRaw.attachmentUrl || savedRaw.attachment_url
+        } as Ticket;
       } catch (e) {
         console.error("Supabase createTicket failed, falling back to localStorage", e);
       }
@@ -150,7 +202,8 @@ export const ticketService = {
       descripcion: data.descripcion,
       estado: TicketStatus.PENDING,
       prioridad: 'Media',
-      fecha: new Date().toISOString()
+      fecha: new Date().toISOString(),
+      attachmentUrl: data.attachmentUrl
     };
 
     await new Promise(resolve => setTimeout(resolve, 600));
@@ -184,7 +237,11 @@ export const ticketService = {
           .single();
 
         if (error) throw error;
-        const updatedTicket = data as Ticket;
+        const updatedRaw = data as any;
+        const updatedTicket = {
+          ...updatedRaw,
+          attachmentUrl: updatedRaw.attachmentUrl || updatedRaw.attachment_url
+        } as Ticket;
         
         // Notify owner if the person changing the status is not the owner
         if (user && user.id !== updatedTicket.userId) {
@@ -236,26 +293,31 @@ export const ticketService = {
     return tickets[index];
   },
 
-  addComment: async (ticketId: number, text: string, user: User): Promise<TicketComment> => {
+  addComment: async (ticketId: number, text: string, user: User, attachmentUrl?: string): Promise<TicketComment> => {
     const newCommentData = {
       ticketId,
       userId: user.id,
       userName: user.name,
       userRole: user.role,
       text,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      attachmentUrl
     };
 
     if (isDbEnabled) {
       try {
         const { data, error } = await supabase
           .from('comments')
-          .insert([newCommentData])
+          .insert([{ ...newCommentData, attachment_url: newCommentData.attachmentUrl }])
           .select()
           .single();
 
         if (error) throw error;
-        const savedComment = data as TicketComment;
+        const savedCommentRaw = data as any;
+        const savedComment = {
+          ...savedCommentRaw,
+          attachmentUrl: savedCommentRaw.attachmentUrl || savedCommentRaw.attachment_url
+        } as TicketComment;
 
         // Notify the other party
         try {
@@ -293,6 +355,8 @@ export const ticketService = {
   },
 
   getComments: async (ticketId: number): Promise<TicketComment[]> => {
+    let allComments: TicketComment[] = [];
+
     if (isDbEnabled) {
       try {
         const { data, error } = await supabase
@@ -302,17 +366,41 @@ export const ticketService = {
           .order('timestamp', { ascending: true });
 
         if (error) throw error;
-        return data as TicketComment[];
+        if (data) {
+          allComments = (data as any[]).map(c => ({
+            ...c,
+            attachmentUrl: c.attachmentUrl || c.attachment_url
+          })) as TicketComment[];
+        }
       } catch (e) {
-        console.error("Supabase getComments failed", e);
+        console.error("Supabase getComments failed, will try local merge", e);
       }
     }
 
-    // Fallback
-    const stored = localStorage.getItem(STORAGE_KEY_COMMENTS);
-    if (!stored) return [];
-    const allComments: TicketComment[] = JSON.parse(stored);
-    return allComments.filter(c => c.ticketId === ticketId).sort((a, b) =>
+    // Multi-layer fallback: Check LocalStorage even if DB is enabled
+    // This handles "Zero-Config" scenarios where columns might be missing in DB
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_COMMENTS);
+      if (stored) {
+        const localComments: TicketComment[] = JSON.parse(stored);
+        const filteredLocal = localComments.filter(c => c.ticketId === ticketId);
+        
+        // Merge without duplicates
+        filteredLocal.forEach(lc => {
+          const exists = allComments.some(sc => 
+            String(sc.id) === String(lc.id) || 
+            (sc.timestamp === lc.timestamp && sc.text === lc.text)
+          );
+          if (!exists) {
+            allComments.push(lc);
+          }
+        });
+      }
+    } catch (localErr) {
+      console.error("Local storage merge failed", localErr);
+    }
+
+    return allComments.sort((a, b) => 
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
   },
@@ -352,7 +440,11 @@ export const ticketService = {
           .single();
 
         if (error) throw error;
-        return data as Ticket;
+        const ticket = data as any;
+        return {
+          ...ticket,
+          attachmentUrl: ticket.attachmentUrl || ticket.attachment_url
+        } as Ticket;
       } catch (e) {
         console.error("Supabase updateTicketClassification failed", e);
       }
