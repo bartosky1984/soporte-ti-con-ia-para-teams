@@ -44,7 +44,7 @@ export const geminiService = {
   },
 
   /**
-   * Complex reasoning for the support assistant chat
+   * Complex reasoning for the support assistant chat with automatic model fallback
    */
   chatWithSupport: async (
     message: string, 
@@ -54,49 +54,58 @@ export const geminiService = {
   ): Promise<string> => {
     if (!apiKey) return "API Key de Gemini no configurada.";
     
-    try {
-      const systemInstruction = `Eres el Asistente de Soporte IT para Microsoft Teams.
-      
-      CONTEXTO OPERATIVO:
-      - Entorno: Producción con persistencia en Supabase.
-      - Estado BBDD: Persistencia ACTIVA.
-      
-      PROTOCOLO DE GESTIÓN DE TICKETS:
-      1. Identifica: Usuario, Título del problema y Prioridad.
-      2. Confirmación: Informa que el ticket ha sido registrado en el sistema.
-      3. ID Real: Los tickets tienen IDs reales asignados por el sistema.
-      
-      RESTRICCIONES CRÍTICAS:
-      - NO solicites credenciales ni datos sensibles.
-      - Tono: Conciso, profesional y proactivo.
-      
-      CONOCIMIENTO DISPONIBLE (FAQs):
-      ${contextKnowledge}
-      `;
+    // Priority list of models to try
+    const modelsToTry = mode === ChatMode.THINKING 
+      ? ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro']
+      : ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
 
-      let modelName = 'gemini-1.5-flash';
-      // Use pro only for thinking mode to ensure maximum availability
-      if (mode === ChatMode.THINKING) {
-        modelName = 'gemini-1.5-pro';
+    let lastError = null;
+
+    for (const modelName of modelsToTry) {
+      try {
+        console.log(`🤖 Attempting LLM [${modelName}]...`);
+        const model = genAI.getGenerativeModel({ 
+          model: modelName,
+          systemInstruction: `Eres el Asistente de Soporte IT para Microsoft Teams.
+          
+          CONTEXTO OPERATIVO:
+          - Entorno: Producción con persistencia en Supabase.
+          - Estado BBDD: Persistencia ACTIVA.
+          
+          PROTOCOLO DE GESTIÓN DE TICKETS:
+          1. Identifica: Usuario, Título del problema y Prioridad.
+          2. Confirmación: Informa que el ticket ha sido registrado en el sistema.
+          3. ID Real: Los tickets tienen IDs reales asignados por el sistema.
+          
+          RESTRICCIONES CRÍTICAS:
+          - NO solicites credenciales ni datos sensibles.
+          - Tono: Conciso, profesional y proactivo.
+          
+          CONOCIMIENTO DISPONIBLE (FAQs):
+          ${contextKnowledge}
+          `
+        });
+
+        const result = await model.generateContent(message);
+        const response = await result.response;
+        return response.text();
+      } catch (error: any) {
+        console.warn(`⚠️ Model ${modelName} failed:`, error.message);
+        lastError = error;
+        // Continue to next model if 404 (not found) or 400 (unsupported)
+        if (error?.message?.includes('404') || error?.message?.includes('400')) {
+          continue;
+        }
+        // If it's a quota error or something else, break and show it
+        break;
       }
-
-      const model = genAI.getGenerativeModel({ 
-        model: modelName,
-        systemInstruction: systemInstruction 
-      });
-
-      console.log(`🤖 LLM Request [${modelName}]:`, message.substring(0, 50) + "...");
-      const result = await model.generateContent(message);
-      const response = await result.response;
-      return response.text();
-    } catch (error: any) {
-      console.error("❌ Gemini chat failed:", error);
-      // Fallback for quota or model restriction errors
-      if (error?.message?.includes('429') || error?.message?.includes('quota')) {
-        return "Lo siento, el servicio de IA está saturado en este momento. Por favor, intenta de nuevo en unos segundos.";
-      }
-      return `Lo siento, encontré un error al procesar tu solicitud con la IA: ${error.message || 'Error desconocido'}`;
     }
+
+    console.error("❌ All Gemini models failed:", lastError);
+    if (lastError?.message?.includes('429') || lastError?.message?.includes('quota')) {
+      return "Lo siento, el servicio de IA está saturado en este momento. Por favor, intenta de nuevo en unos segundos.";
+    }
+    return `Lo siento, encontré un error al procesar tu solicitud con la IA: ${lastError?.message || 'Error desconocido'}`;
   },
 
   /**
