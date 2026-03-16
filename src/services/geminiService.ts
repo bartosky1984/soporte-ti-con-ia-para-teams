@@ -61,10 +61,10 @@ export const geminiService = {
   ): Promise<string> => {
     if (!apiKey) return "API Key de Gemini no configurada.";
     
-    // Priority list of models to try
+    // Updated priority list based on REST diagnostic
     const modelsToTry = mode === ChatMode.THINKING 
-      ? ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro']
-      : ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
+      ? ['gemini-2.0-flash', 'gemini-pro-latest', 'gemini-flash-latest']
+      : ['gemini-2.0-flash', 'gemini-flash-latest', 'gemini-pro-latest'];
 
     let lastError = null;
 
