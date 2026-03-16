@@ -62,9 +62,10 @@ export const geminiService = {
     if (!apiKey) return "API Key de Gemini no configurada.";
     
     // Updated priority list based on REST diagnostic
+    // We include 'latest' aliases as they are often more stable with quotas
     const modelsToTry = mode === ChatMode.THINKING 
-      ? ['gemini-2.0-flash', 'gemini-pro-latest', 'gemini-flash-latest']
-      : ['gemini-2.0-flash', 'gemini-flash-latest', 'gemini-pro-latest'];
+      ? ['gemini-pro-latest', 'gemini-2.0-flash', 'gemini-flash-latest']
+      : ['gemini-flash-latest', 'gemini-2.0-flash', 'gemini-pro-latest'];
 
     let lastError = null;
 
@@ -75,26 +76,21 @@ export const geminiService = {
           model: modelName
         });
 
-        console.log(`📡 [Gemini] Sending content to ${modelName}...`);
-        // Use a simpler request first to verify connectivity
         const result = await model.generateContent([
-          { text: `System: Eres un asistente de soporte IT. Contexto: ${contextKnowledge}` },
+          { text: `System: Eres un asistente de soporte IT para Microsoft Teams. Tono profesional y conciso. Contexto: ${contextKnowledge}` },
           { text: message }
         ]);
         
-        console.log(`📦 [Gemini] Response received from ${modelName}`);
         const response = await result.response;
         const text = response.text();
-        console.log(`💬 [Gemini] Success! Response length: ${text.length}`);
+        console.log(`✅ [Gemini] Success with ${modelName}`);
         return text;
       } catch (error: any) {
-        console.error(`⚠️ [Gemini] Model ${modelName} failed:`, error);
+        console.warn(`⚠️ [Gemini] Model ${modelName} failed:`, error.message);
         lastError = error;
-        // Continue to next model if it's a 404/400/500
-        if (error?.message?.includes('404') || error?.message?.includes('400') || error?.message?.includes('500')) {
-          continue;
-        }
-        break;
+        // Continue to next model for ALMOST ANY error (404, 400, 429, 500)
+        // This is the most resilient approach
+        continue;
       }
     }
 
