@@ -54,24 +54,9 @@ export const ticketService = {
             supabase.from('ticket_reads').select('*').eq('userId', currentUserId)
           ]);
 
-          // As RPC might not exist, let's use a more standard approach first
+          // Use only Supabase comments when DB is enabled for strict sync
           const { data: allCommentsRaw } = await supabase.from('comments').select('*');
           let allComments = (allCommentsRaw || []) as any[];
-
-          // Hybrid merge for comments in all metadata calculations
-          try {
-            const storedComments = localStorage.getItem(STORAGE_KEY_COMMENTS);
-            if (storedComments) {
-              const localComments: any[] = JSON.parse(storedComments);
-              localComments.forEach(lc => {
-                const exists = allComments.some(sc => 
-                  String(sc.id) === String(lc.id) || 
-                  (sc.timestamp === lc.timestamp && sc.text === lc.text)
-                );
-                if (!exists) allComments.push(lc);
-              });
-            }
-          } catch (e) { console.error("Local comments merge failed in getTickets", e); }
           
           const readReceipts = (readStatuses || []).reduce((acc: any, curr: any) => {
             acc[curr.ticketId] = new Date(curr.lastReadTime).getTime();
@@ -97,24 +82,6 @@ export const ticketService = {
               });
         }
         
-        // Multi-layer enrichment: Merge with LocalStorage 
-        // This ensures attachments are visible even if Supabase columns are missing
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const localTickets: Ticket[] = JSON.parse(stored);
-          localTickets.forEach(lt => {
-            const index = tickets.findIndex(st => Number(st.id) === Number(lt.id));
-            if (index === -1) {
-              tickets.push(lt);
-            } else {
-              // If Supabase version is missing the attachment but local has it
-              if (lt.attachmentUrl && !tickets[index].attachmentUrl) {
-                tickets[index].attachmentUrl = lt.attachmentUrl;
-              }
-            }
-          });
-        }
-
         return tickets.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
       } catch (e) {
         console.error("Supabase getTickets failed, falling back to localStorage", e);
