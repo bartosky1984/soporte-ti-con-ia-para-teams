@@ -1,14 +1,14 @@
 {
-  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.13/MicrosoftTeams.schema.json",
-  "manifestVersion": "1.13",
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
   "version": "1.0.0",
   "id": "57a02d53-73a4-4432-8438-661725555555",
   "packageName": "com.soporte.ia.teams",
   "developer": {
     "name": "Soporte TI IA",
     "websiteUrl": "https://soporte-ti-con-ia-para-teams.vercel.app",
-    "privacyUrl": "https://soporte-ti-con-ia-para-teams.vercel.app/privacy",
-    "termsOfUseUrl": "https://soporte-ti-con-ia-para-teams.vercel.app/terms"
+    "privacyUrl": "https://soporte-ti-con-ia-para-teams.vercel.app",
+    "termsOfUseUrl": "https://soporte-ti-con-ia-para-teams.vercel.app"
   },
   "icons": {
     "color": "color.png",
@@ -19,23 +19,25 @@
     "full": "Soporte TI con Inteligencia Artificial"
   },
   "description": {
-    "short": "Gestión de tickets de soporte con IA",
-    "full": "Sistema avanzado de gestión de tickets de IT y Servicios Generales integrado con Inteligencia Artificial para equipos eficientes."
+    "short": "Soporte TI con IA",
+    "full": "Gestión inteligente de tickets de soporte técnico y servicios generales directamente en Microsoft Teams."
   },
   "accentColor": "#6264A7",
   "staticTabs": [
     {
-      "entityId": "ticketsDashboard",
+      "entityId": "ticketsPersonalTab",
       "name": "Soporte",
       "contentUrl": "https://soporte-ti-con-ia-para-teams.vercel.app",
       "websiteUrl": "https://soporte-ti-con-ia-para-teams.vercel.app",
-      "scopes": ["personal", "team"]
+      "scopes": ["personal"]
     }
   ],
   "validDomains": [
     "soporte-ti-con-ia-para-teams.vercel.app",
-    "supabase.co",
-    "google.com"
+    "*.supabase.co",
+    "*.google.com",
+    "fonts.gstatic.com",
+    "fonts.googleapis.com"
   ],
   "permissions": [
     "identity",
