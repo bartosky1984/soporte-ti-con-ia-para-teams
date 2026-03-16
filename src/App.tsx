@@ -15,7 +15,10 @@ const SearchFilters = lazy(() => import('./components/SearchFilters').then(m => 
 const UserDashboard = lazy(() => import('./components/UserDashboard').then(m => ({ default: m.UserDashboard })));
 import type { FilterState } from './components/SearchFilters';
 import { ticketService } from './services/ticketService';
+import { wikiService } from './services/wikiService';
 import { notificationService } from './services/notificationService';
+import { syncService } from './services/syncService';
+import { Wifi, WifiOff, RefreshCcw } from 'lucide-react';
 import { Ticket, TicketStatus, TicketType, User, UserRole, Notification } from './types';
 import { ICONS, TEAMS_THEME_COLOR, ROLE_LABELS } from './constants';
 
@@ -36,6 +39,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>(user?.role === UserRole.USER ? Tab.DASHBOARD : Tab.LIST);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [isOnline, setIsOnline] = useState(window.navigator.onLine);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   
@@ -81,6 +86,48 @@ export default function App() {
       setUnreadCount(data.filter(n => !n.read).length);
     } catch (e) {
       console.error("Failed to fetch notifications", e);
+    }
+  };
+
+  // Handle online/offline status and sync
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      handleSync();
+    };
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [user]);
+
+  const handleSync = async () => {
+    if (syncService.getQueueCount() > 0) {
+      setIsSyncing(true);
+      try {
+        await syncService.processQueue({
+          onSyncTicket: async (data, u) => {
+            const ticket = await ticketService.createTicket(data, u);
+            // Update local state if needed
+            setTickets(prev => [ticket, ...prev]);
+            return ticket;
+          },
+          onSyncComment: async (tId, text, u, attUrl) => {
+            return await ticketService.addComment(tId, text, u, attUrl);
+          }
+        });
+        // Refresh data after sync
+        fetchTickets();
+      } catch (err) {
+        console.error("Sync failed", err);
+      } finally {
+        setIsSyncing(false);
+      }
     }
   };
 
@@ -215,6 +262,31 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-teams-light text-teams-dark font-sans flex flex-col">
+      {/* Connectivity Indicator */}
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+        {!isOnline && (
+          <div className="bg-red-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
+            <WifiOff size={18} />
+            <span className="text-sm font-medium">Modo Offline</span>
+          </div>
+        )}
+        {isSyncing && (
+          <div className="bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+            <RefreshCcw size={18} className="animate-spin" />
+            <span className="text-sm font-medium">Sincronizando...</span>
+          </div>
+        )}
+        {isOnline && !isSyncing && syncService.getQueueCount() > 0 && (
+          <button 
+            onClick={handleSync}
+            className="bg-amber-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 hover:bg-amber-600 transition-colors"
+          >
+            <RefreshCcw size={18} />
+            <span className="text-sm font-medium">{syncService.getQueueCount()} pendientes</span>
+          </button>
+        )}
+      </div>
+
       {/* Header Landmark */}
       <header role="banner" className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-10 w-full">
         <div className="flex items-center space-x-3">

@@ -1,6 +1,7 @@
 import { Ticket, TicketStatus, TicketType, User, TicketComment, UserRole } from '../types';
 import { notificationService } from './notificationService';
 import { supabase } from './supabaseClient';
+import { syncService, SyncAction } from './syncService';
 
 // Mock storage keys
 const STORAGE_KEY = 'teams_tickets_db';
@@ -126,37 +127,46 @@ export const ticketService = {
           priority = 'Alta';
         }
 
-        const insertData = {
-          userId: user.id,
-          userName: user.name,
-          tipo: data.tipo,
-          descripcion: data.descripcion,
-          estado: TicketStatus.PENDING,
-          prioridad: priority,
-          fecha: new Date().toISOString(),
-          attachmentUrl: data.attachmentUrl,
-          attachment_url: data.attachmentUrl
-        };
+        // If we are offline, enqueue for sync
+        if (!window.navigator.onLine) {
+          console.log("[TicketService] Offline, enqueuing CREATE_TICKET");
+          syncService.enqueue(SyncAction.CREATE_TICKET, { ticketData: data, user });
+          // We fall through to the local storage fallback below so the user sees it immediately
+        } else {
+          try {
+            const insertData = {
+              userId: user.id,
+              userName: user.name,
+              tipo: data.tipo,
+              descripcion: data.descripcion,
+              estado: TicketStatus.PENDING,
+              prioridad: priority,
+              fecha: new Date().toISOString(),
+              attachmentUrl: data.attachmentUrl,
+              attachment_url: data.attachmentUrl
+            };
 
-        const { data: saved, error } = await supabase
-          .from('tickets')
-          .insert([insertData])
-          .select()
-          .single();
+            const { data: saved, error } = await supabase
+              .from('tickets')
+              .insert([insertData])
+              .select()
+              .single();
 
-        if (error) {
-          console.error("Supabase insert error:", error);
-          throw error;
+            if (error) throw error;
+            
+            const savedRaw = saved as any;
+            return {
+              ...savedRaw,
+              attachmentUrl: savedRaw.attachmentUrl || savedRaw.attachment_url
+            } as Ticket;
+          } catch (supabaseError) {
+             console.error("Supabase createTicket failed, enqueuing for later sync", supabaseError);
+             syncService.enqueue(SyncAction.CREATE_TICKET, { ticketData: data, user });
+          }
         }
-        
-        // Map raw database result (snake_case) to our camelCase interface
-        const savedRaw = saved as any;
-        return {
-          ...savedRaw,
-          attachmentUrl: savedRaw.attachmentUrl || savedRaw.attachment_url
-        } as Ticket;
       } catch (e) {
-        console.error("Supabase createTicket failed, falling back to localStorage", e);
+        console.error("General createTicket failure, enqueuing", e);
+        syncService.enqueue(SyncAction.CREATE_TICKET, { ticketData: data, user });
       }
     }
 
@@ -272,40 +282,47 @@ export const ticketService = {
     };
 
     if (isDbEnabled) {
-      try {
-        const { data, error } = await supabase
-          .from('comments')
-          .insert([{ ...newCommentData, attachment_url: newCommentData.attachmentUrl }])
-          .select()
-          .single();
-
-        if (error) throw error;
-        const savedCommentRaw = data as any;
-        const savedComment = {
-          ...savedCommentRaw,
-          attachmentUrl: savedCommentRaw.attachmentUrl || savedCommentRaw.attachment_url
-        } as TicketComment;
-
-        // Notify the other party
+      if (!window.navigator.onLine) {
+        console.log("[TicketService] Offline, enqueuing ADD_COMMENT");
+        syncService.enqueue(SyncAction.ADD_COMMENT, { ticketId, text, user, attachmentUrl });
+        // Fall through to local storage fallback
+      } else {
         try {
-          const { data: ticket } = await supabase.from('tickets').select('*').eq('id', ticketId).single();
-          if (ticket) {
-            const recipientId = user.id === ticket.userId ? ticket.technicianId : ticket.userId;
-            if (recipientId) {
-              await notificationService.addNotification(
-                recipientId,
-                ticketId,
-                `${user.name} comentó en el ticket #${ticketId}: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`
-              );
-            }
-          }
-        } catch (notifErr) {
-          console.error("Failed to send notification", notifErr);
-        }
+          const { data, error } = await supabase
+            .from('comments')
+            .insert([{ ...newCommentData, attachment_url: newCommentData.attachmentUrl }])
+            .select()
+            .single();
 
-        return savedComment;
-      } catch (e) {
-        console.error("Supabase addComment failed", e);
+          if (error) throw error;
+          const savedCommentRaw = data as any;
+          const savedComment = {
+            ...savedCommentRaw,
+            attachmentUrl: savedCommentRaw.attachmentUrl || savedCommentRaw.attachment_url
+          } as TicketComment;
+
+          // Notify the other party
+          try {
+            const { data: ticket } = await supabase.from('tickets').select('*').eq('id', ticketId).single();
+            if (ticket) {
+              const recipientId = user.id === ticket.userId ? ticket.technicianId : ticket.userId;
+              if (recipientId) {
+                await notificationService.addNotification(
+                  recipientId,
+                  ticketId,
+                  `${user.name} comentó en el ticket #${ticketId}: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`
+                );
+              }
+            }
+          } catch (notifErr) {
+            console.error("Failed to send notification", notifErr);
+          }
+
+          return savedComment;
+        } catch (e) {
+          console.error("Supabase addComment failed, enqueuing", e);
+          syncService.enqueue(SyncAction.ADD_COMMENT, { ticketId, text, user, attachmentUrl });
+        }
       }
     }
 

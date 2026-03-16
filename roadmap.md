@@ -36,7 +36,7 @@ Este documento detalla los pasos seguidos y los hitos pendientes para completar 
 - [x] **Población de Datos**: Inyección de datos realistas (8+ tickets, múltiples usuarios) para testing de flujos técnicos.
 - [x] **Búsqueda Avanzada**: Filtros por fecha, usuario y texto completo. (UI & Client-side filtering)
 - [x] **Adjuntos**: Integración en creación de tickets y chat de soporte (Supabase Storage + Previsualización).
-- [ ] **Modo Offline Mejorado**: Sincronización en segundo plano al recuperar conexión.
+- [x] **Modo Offline Mejorado**: Sincronización en segundo plano al recuperar conexión.
 
 ## 🚀 Fase 5: Producción & Feedback (En Proceso)
 - [x] Configuración de variables de entorno para Producción (Vercel).
