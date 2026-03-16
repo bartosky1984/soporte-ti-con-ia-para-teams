@@ -1,7 +1,7 @@
 import { FAQ } from '../types';
 import { supabase } from './supabaseClient';
 
-const isDbEnabled = (import.meta.env?.VITE_DB_ENABLED === 'true' || (typeof process !== 'undefined' && process.env.DB_ENABLED === 'true'));
+const isDbEnabled = import.meta.env.VITE_DB_ENABLED === 'true';
 
 // Static fallback in case DB is down or empty
 const STATIC_FAQS: FAQ[] = [

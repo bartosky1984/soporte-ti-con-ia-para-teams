@@ -1,7 +1,7 @@
 import { TicketClassification } from '../types';
 import { supabase } from './supabaseClient';
 
-const isDbEnabled = (import.meta.env?.VITE_DB_ENABLED === 'true' || (typeof process !== 'undefined' && process.env.DB_ENABLED === 'true'));
+const isDbEnabled = import.meta.env.VITE_DB_ENABLED === 'true';
 
 const DEFAULT_CLASSIFICATIONS: TicketClassification[] = [
   { id: '1', name: 'Problema técnico' },

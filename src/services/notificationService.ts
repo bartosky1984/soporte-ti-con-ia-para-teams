@@ -1,7 +1,7 @@
 import { Notification } from '../types';
 import { supabase } from './supabaseClient';
 
-const isDbEnabled = (import.meta.env?.VITE_DB_ENABLED === 'true' || (typeof process !== 'undefined' && process.env.DB_ENABLED === 'true'));
+const isDbEnabled = import.meta.env.VITE_DB_ENABLED === 'true';
 
 export const notificationService = {
   getNotifications: async (userId: string): Promise<Notification[]> => {
