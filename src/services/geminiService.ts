@@ -2,12 +2,19 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Multi-layered variable detection for maximum compatibility (Vercel + Vite)
 const getApiKey = () => {
+  console.log("🔍 [Gemini] Detecting API Key...");
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+    console.log("✅ [Gemini] API Key found in import.meta.env.VITE_GEMINI_API_KEY");
     return import.meta.env.VITE_GEMINI_API_KEY;
   }
   if (typeof process !== 'undefined' && process.env) {
-    return process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.VITE_GEMINI_API_KEY;
+    const key = process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (key) {
+      console.log("✅ [Gemini] API Key found in process.env");
+      return key;
+    }
   }
+  console.warn("❌ [Gemini] NO API KEY DETECTED!");
   return '';
 };
 
@@ -63,40 +70,30 @@ export const geminiService = {
 
     for (const modelName of modelsToTry) {
       try {
-        console.log(`🤖 Attempting LLM [${modelName}]...`);
+        console.log(`🤖 [Gemini] Attempting ${modelName}...`);
         const model = genAI.getGenerativeModel({ 
-          model: modelName,
-          systemInstruction: `Eres el Asistente de Soporte IT para Microsoft Teams.
-          
-          CONTEXTO OPERATIVO:
-          - Entorno: Producción con persistencia en Supabase.
-          - Estado BBDD: Persistencia ACTIVA.
-          
-          PROTOCOLO DE GESTIÓN DE TICKETS:
-          1. Identifica: Usuario, Título del problema y Prioridad.
-          2. Confirmación: Informa que el ticket ha sido registrado en el sistema.
-          3. ID Real: Los tickets tienen IDs reales asignados por el sistema.
-          
-          RESTRICCIONES CRÍTICAS:
-          - NO solicites credenciales ni datos sensibles.
-          - Tono: Conciso, profesional y proactivo.
-          
-          CONOCIMIENTO DISPONIBLE (FAQs):
-          ${contextKnowledge}
-          `
+          model: modelName
         });
 
-        const result = await model.generateContent(message);
+        console.log(`📡 [Gemini] Sending content to ${modelName}...`);
+        // Use a simpler request first to verify connectivity
+        const result = await model.generateContent([
+          { text: `System: Eres un asistente de soporte IT. Contexto: ${contextKnowledge}` },
+          { text: message }
+        ]);
+        
+        console.log(`📦 [Gemini] Response received from ${modelName}`);
         const response = await result.response;
-        return response.text();
+        const text = response.text();
+        console.log(`💬 [Gemini] Success! Response length: ${text.length}`);
+        return text;
       } catch (error: any) {
-        console.warn(`⚠️ Model ${modelName} failed:`, error.message);
+        console.error(`⚠️ [Gemini] Model ${modelName} failed:`, error);
         lastError = error;
-        // Continue to next model if 404 (not found) or 400 (unsupported)
-        if (error?.message?.includes('404') || error?.message?.includes('400')) {
+        // Continue to next model if it's a 404/400/500
+        if (error?.message?.includes('404') || error?.message?.includes('400') || error?.message?.includes('500')) {
           continue;
         }
-        // If it's a quota error or something else, break and show it
         break;
       }
     }
