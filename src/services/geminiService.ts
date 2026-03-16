@@ -1,7 +1,17 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Multi-layered variable detection for maximum compatibility (Vercel + Vite)
-const apiKey = (typeof process !== 'undefined' && (process.env.GEMINI_API_KEY || process.env.API_KEY)) || import.meta.env.VITE_GEMINI_API_KEY || '';
+const getApiKey = () => {
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+    return import.meta.env.VITE_GEMINI_API_KEY;
+  }
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.VITE_GEMINI_API_KEY;
+  }
+  return '';
+};
+
+const apiKey = getApiKey();
 const genAI = new GoogleGenerativeAI(apiKey);
 
 export enum ChatMode {
@@ -65,7 +75,8 @@ export const geminiService = {
       `;
 
       let modelName = 'gemini-1.5-flash';
-      if (mode === ChatMode.THINKING || mode === ChatMode.STANDARD) {
+      // Use pro only for thinking mode to ensure maximum availability
+      if (mode === ChatMode.THINKING) {
         modelName = 'gemini-1.5-pro';
       }
 
@@ -74,12 +85,17 @@ export const geminiService = {
         systemInstruction: systemInstruction 
       });
 
+      console.log(`🤖 LLM Request [${modelName}]:`, message.substring(0, 50) + "...");
       const result = await model.generateContent(message);
       const response = await result.response;
       return response.text();
-    } catch (error) {
-      console.error("Gemini chat failed:", error);
-      return "Lo siento, encontré un error al procesar tu solicitud con la IA.";
+    } catch (error: any) {
+      console.error("❌ Gemini chat failed:", error);
+      // Fallback for quota or model restriction errors
+      if (error?.message?.includes('429') || error?.message?.includes('quota')) {
+        return "Lo siento, el servicio de IA está saturado en este momento. Por favor, intenta de nuevo en unos segundos.";
+      }
+      return `Lo siento, encontré un error al procesar tu solicitud con la IA: ${error.message || 'Error desconocido'}`;
     }
   },
 
