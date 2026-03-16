@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// The API key is defined in vite.config.ts and injected via process.env.GEMINI_API_KEY
-const apiKey = (typeof process !== 'undefined' && (process.env.GEMINI_API_KEY || process.env.API_KEY)) || '';
+// Use VITE_ prefix for standard browser access via Vite
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(apiKey);
 
 export enum ChatMode {
