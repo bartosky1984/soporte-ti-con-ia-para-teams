@@ -33,6 +33,7 @@ export interface Ticket {
   hasMessages?: boolean; // Calculated property for UI
   messageCount?: number; // Total messages count
   attachmentUrl?: string; // URL for ticket attachment
+  attachment_url?: string; // Compatibility property for Supabase
   hasAttachments?: boolean; // Calculated: has file in ticket or any comment
 }
 
@@ -55,6 +56,7 @@ export interface TicketComment {
   text: string;
   timestamp: string;
   attachmentUrl?: string; // URL for comment attachment
+  attachment_url?: string; // Compatibility property for Supabase
 }
 
 export interface ChatMessage {
