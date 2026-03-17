@@ -225,6 +225,18 @@ export default function App() {
   // Filtering Logic
   const filteredTickets = tickets.filter(ticket => {
     if (!filters) return true;
+
+    // Automatic department filter for technicians if no manual classification filter is active
+    if (filters.type === 'all' && (user.role === UserRole.TECHNICIAN || user.role === UserRole.LEAD_TECHNICIAN)) {
+      const email = user.email?.toLowerCase() || '';
+      const name = user.name?.toLowerCase() || '';
+      
+      if (email.includes('it') || name.includes('it')) {
+        if (ticket.tipo !== TicketType.IT) return false;
+      } else if (email.includes('servicios') || name.includes('servicios') || email.includes('general')) {
+        if (ticket.tipo !== TicketType.GENERAL) return false;
+      }
+    }
     
     const matchesSearch = !filters.searchText || 
       ticket.descripcion.toLowerCase().includes(filters.searchText.toLowerCase()) ||

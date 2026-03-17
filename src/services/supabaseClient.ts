@@ -1,11 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Multi-layered variable detection for maximum compatibility (Vercel + Vite)
-const supabaseUrl = (typeof process !== 'undefined' && process.env.SUPABASE_URL) || import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseKey = (typeof process !== 'undefined' && process.env.SUPABASE_KEY) || import.meta.env.VITE_SUPABASE_KEY || '';
+// Canonical Vite environment variable detection
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseKey = import.meta.env.VITE_SUPABASE_KEY || '';
+
+console.log("🛠️ [Supabase] Initializing with URL:", supabaseUrl);
 
 if (!supabaseUrl || !supabaseKey) {
-  console.warn("Supabase credentials not found in environment variables. Database features might be disabled.");
+  console.warn("⚠️ [Supabase] Credentials not found in VITE_ environment variables!");
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey);

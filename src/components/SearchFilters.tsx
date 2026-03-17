@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TicketStatus, User, UserRole } from '../types';
+import { TicketStatus, User, UserRole, TicketType } from '../types';
 import { ICONS } from '../constants';
 import { userService } from '../services/userService';
 
@@ -7,6 +7,7 @@ export interface FilterState {
   searchText: string;
   creatorId: string;
   technicianId: string;
+  type: TicketType | 'all';
   startDate: string;
   endDate: string;
   status: string;
@@ -26,6 +27,7 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({ onFilterChange, cu
     searchText: '',
     creatorId: 'all',
     technicianId: 'all',
+    type: 'all',
     startDate: '',
     endDate: '',
     status: 'all'
@@ -52,10 +54,11 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({ onFilterChange, cu
   };
 
   const clearFilters = () => {
-    const reset = {
+    const reset: FilterState = {
       searchText: '',
       creatorId: 'all',
       technicianId: 'all',
+      type: 'all',
       startDate: '',
       endDate: '',
       status: 'all'

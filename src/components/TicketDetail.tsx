@@ -172,14 +172,36 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       {/* Header */}
       <div className="p-4 border-b border-gray-200 flex justify-between items-start bg-gray-50 rounded-t-lg">
         <div className="flex items-start gap-3">
-          <button 
+            <button 
             onClick={onClose} 
             className="mt-1 text-gray-500 hover:text-teams-purple focus:outline-none focus:ring-2 focus:ring-teams-purple rounded"
             aria-label="Cerrar detalles del ticket y volver a la lista"
           >
             <ICONS.ArrowLeft aria-hidden="true" />
           </button>
-          <div>
+          <div className="flex-1">
+            {/* SLA Warning Banner */}
+            {ticket.estado !== TicketStatus.RESOLVED && (
+              (() => {
+                const createdDate = new Date(ticket.fecha).getTime();
+                const now = Date.now();
+                const diffHours = (now - createdDate) / (1000 * 60 * 60);
+                if (diffHours > 24) {
+                  return (
+                    <div className="mb-2 bg-red-50 border border-red-200 text-red-700 px-3 py-1 rounded text-xs font-bold flex items-center gap-2 animate-pulse">
+                      <ICONS.AlertTriangle size={14} /> EXCESO DE SLA (24h+) - REQUIERE ATENCIÓN INMEDIATA
+                    </div>
+                  );
+                } else if (diffHours > 18) {
+                  return (
+                    <div className="mb-2 bg-orange-50 border border-orange-200 text-orange-700 px-3 py-1 rounded text-xs font-bold flex items-center gap-2">
+                      <ICONS.Clock size={14} /> ADVERTENCIA DE SLA (18h+)
+                    </div>
+                  );
+                }
+                return null;
+              })()
+            )}
             <div className="flex items-center space-x-2 mb-1">
               <span className="text-sm font-mono text-gray-500" aria-label={`ID del ticket ${ticket.id}`}>#{ticket.id}</span>
               <span className={`px-2 py-0.5 text-xs rounded-full border font-medium ${statusColors[ticket.estado]}`} aria-label={`Estado: ${ticket.estado}`}>

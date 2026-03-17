@@ -109,6 +109,23 @@ export const TicketList: React.FC<TicketListProps> = ({
                       <ICONS.Paperclip size={14} aria-hidden="true" />
                     </span>
                   )}
+
+                  {/* SLA Alert Indicator */}
+                  {ticket.estado !== TicketStatus.RESOLVED && (
+                    (() => {
+                      const createdDate = new Date(ticket.fecha).getTime();
+                      const now = Date.now();
+                      const diffHours = (now - createdDate) / (1000 * 60 * 60);
+                      if (diffHours > 24) {
+                        return (
+                          <span className="flex items-center gap-1 text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-bold" title="Excede el SLA de 24h">
+                            <ICONS.AlertTriangle size={10} /> SLA ALERT
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()
+                  )}
                 </div>
 
                 <button 

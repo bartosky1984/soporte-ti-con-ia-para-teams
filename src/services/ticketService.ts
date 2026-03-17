@@ -50,8 +50,7 @@ export const ticketService = {
 
         if (currentUserId) {
           // Fetch counts and read status from Supabase
-          const [{ data: commentCounts }, { data: readStatuses }] = await Promise.all([
-            supabase.rpc('get_comment_counts'), // We'll need to create this RPC or use a different approach
+          const [{ data: readStatuses }] = await Promise.all([
             supabase.from('ticket_reads').select('*').eq('userId', currentUserId)
           ]);
 
@@ -200,10 +199,16 @@ export const ticketService = {
           updateData.resolvedAt = new Date().toISOString();
         }
         
-        // Auto-assign technician when they start working on it
+        // Auto-assign technician and set department when they start working on it
         if (status === TicketStatus.IN_PROGRESS && user.role !== UserRole.USER) {
           updateData.technicianId = user.id;
           updateData.technicianName = user.name;
+          
+          // Record first response time if not already set
+          const { data: currentTicket } = await supabase.from('tickets').select('firstResponseAt').eq('id', id).single();
+          if (currentTicket && !currentTicket.firstResponseAt) {
+            updateData.firstResponseAt = new Date().toISOString();
+          }
         }
 
         const { data, error } = await supabase
@@ -270,6 +275,63 @@ export const ticketService = {
     return tickets[index];
   },
 
+  updateTicketPriority: async (id: number, priority: string, user: User, oldPriority: string): Promise<Ticket | null> => {
+    if (isDbEnabled) {
+      try {
+        const { data, error } = await supabase
+          .from('tickets')
+          .update({ prioridad: priority })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        
+        await ticketService.addAuditLog(id, user, 'PRIORITY_CHANGE', oldPriority, priority);
+        
+        return data as Ticket;
+      } catch (e) {
+        console.error("Supabase updateTicketPriority failed", e);
+      }
+    }
+    return null;
+  },
+
+  addAuditLog: async (ticketId: number, user: User, action: string, oldValue: string, newValue: string): Promise<void> => {
+    if (isDbEnabled) {
+      try {
+        await supabase
+          .from('ticket_audit_logs')
+          .insert([{
+            ticket_id: ticketId,
+            user_name: user.name,
+            action: action,
+            old_value: oldValue,
+            new_value: newValue
+          }]);
+      } catch (e) {
+        console.error("Failed to add audit log", e);
+      }
+    }
+  },
+
+  getAuditLogs: async (ticketId: number): Promise<any[]> => {
+    if (!isDbEnabled) return [];
+    try {
+      const { data, error } = await supabase
+        .from('ticket_audit_logs')
+        .select('*')
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      console.error("Failed to fetch audits", e);
+      return [];
+    }
+  },
+
   addComment: async (ticketId: number, text: string, user: User, attachmentUrl?: string): Promise<TicketComment> => {
     const newCommentData = {
       ticketId,
@@ -285,7 +347,6 @@ export const ticketService = {
       if (!window.navigator.onLine) {
         console.log("[TicketService] Offline, enqueuing ADD_COMMENT");
         syncService.enqueue(SyncAction.ADD_COMMENT, { ticketId, text, user, attachmentUrl });
-        // Fall through to local storage fallback
       } else {
         try {
           const { data, error } = await supabase
@@ -326,7 +387,7 @@ export const ticketService = {
       }
     }
 
-    // LocalStorage Fallback (needs ID)
+    // LocalStorage Fallback
     const newComment: TicketComment = {
       id: Date.now().toString(),
       ...newCommentData
@@ -357,19 +418,17 @@ export const ticketService = {
           })) as TicketComment[];
         }
       } catch (e) {
-        console.error("Supabase getComments failed, will try local merge", e);
+        console.error("Supabase getComments failed", e);
       }
     }
 
-    // Multi-layer fallback: Check LocalStorage even if DB is enabled
-    // This handles "Zero-Config" scenarios where columns might be missing in DB
+    // Multi-layer fallback
     try {
       const stored = localStorage.getItem(STORAGE_KEY_COMMENTS);
       if (stored) {
         const localComments: TicketComment[] = JSON.parse(stored);
         const filteredLocal = localComments.filter(c => c.ticketId === ticketId);
         
-        // Merge without duplicates
         filteredLocal.forEach(lc => {
           const exists = allComments.some(sc => 
             String(sc.id) === String(lc.id) || 
@@ -453,7 +512,7 @@ export const ticketService = {
           .update({ 
             technicianId: technician.id, 
             technicianName: technician.name,
-            estado: TicketStatus.IN_PROGRESS // Auto-set to in progress when assigned
+            estado: TicketStatus.IN_PROGRESS 
           })
           .eq('id', ticketId)
           .select()
@@ -462,18 +521,17 @@ export const ticketService = {
         if (error) throw error;
         const assignedTicket = data as Ticket;
 
-        // Notify both parties
         try {
           await Promise.all([
             notificationService.addNotification(
               technician.id,
               ticketId,
-              `Se te ha asignado el ticket #${ticketId}: ${assignedTicket.descripcion.substring(0, 30)}...`
+              `Se te ha asignado el ticket #${ticketId}`
             ),
             notificationService.addNotification(
               assignedTicket.userId,
               ticketId,
-              `El técnico ${technician.name} ha sido asignado a tu ticket #${ticketId}.`
+              `El técnico ${technician.name} ha sido asignado`
             )
           ]);
         } catch (notifErr) {
@@ -486,7 +544,6 @@ export const ticketService = {
       }
     }
 
-    // Fallback
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return null;
     const tickets_fallback: Ticket[] = JSON.parse(stored);
@@ -501,44 +558,7 @@ export const ticketService = {
     return tickets_fallback[index];
   },
 
-  addAuditLog: async (ticketId: number, user: User, action: string, oldValue: string, newValue: string): Promise<void> => {
-    if (!isDbEnabled) return;
-    
-    try {
-      await supabase
-        .from('ticket_audits')
-        .insert([{
-          ticket_id: ticketId,
-          user_id: user.id,
-          user_name: user.name,
-          action,
-          old_value: oldValue,
-          new_value: newValue
-        }]);
-    } catch (e) {
-      console.error("Audit logging failed", e);
-    }
-  },
-
-  getAuditLogs: async (ticketId: number): Promise<any[]> => {
-    if (!isDbEnabled) return [];
-    try {
-      const { data, error } = await supabase
-        .from('ticket_audits')
-        .select('*')
-        .eq('ticket_id', ticketId)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data;
-    } catch (e) {
-      console.error("Failed to fetch audits", e);
-      return [];
-    }
-  },
-
   getITHealthStats: async (technicianId?: string): Promise<any> => {
-    // We need classifications to avoid hardcoding IDs
     const { classificationService } = await import('./classificationService');
     const [tickets, classifications] = await Promise.all([
       ticketService.getTickets(),
@@ -550,6 +570,18 @@ export const ticketService = {
       : tickets;
 
     const resolved = relevantTickets.filter(t => t.estado === TicketStatus.RESOLVED);
+    
+    let totalResolutionTime = 0;
+    let resolvedWithTime = 0;
+    
+    resolved.forEach(t => {
+      if (t.fecha && t.resolvedAt) {
+        const diff = new Date(t.resolvedAt).getTime() - new Date(t.fecha).getTime();
+        totalResolutionTime += diff;
+        resolvedWithTime++;
+      }
+    });
+
     const categories = ['Software', 'Hardware', 'Redes', 'General'];
     const types = categories.map(name => ({
       name,
@@ -561,16 +593,12 @@ export const ticketService = {
       count: relevantTickets.filter(t => t.classificationId === c.id).length
     }));
 
-    // Add "Unclassified" if there are any
     const unclassifiedCount = relevantTickets.filter(t => !t.classificationId).length;
     if (unclassifiedCount > 0) {
       byClassification.push({ name: 'Sin clasificar', count: unclassifiedCount });
     }
 
-    const trainingClassification = classifications.find(c => c.name.toLowerCase().includes('formación'));
-    const trainingId = trainingClassification?.id || '2';
-
-    const trainingNeeded = relevantTickets.filter(t => t.classificationId === trainingId).reduce((acc: any, t) => {
+    const trainingNeeded = relevantTickets.filter(t => t.classificationId === '2').reduce((acc: any, t) => {
       acc[t.userName] = (acc[t.userName] || 0) + 1;
       return acc;
     }, {});
@@ -579,7 +607,7 @@ export const ticketService = {
       totalTickets: relevantTickets.length,
       resolvedTickets: resolved.length,
       pendingTickets: relevantTickets.length - resolved.length,
-          avgResolutionTimeHours: 2.5,
+      avgResolutionTimeHours: resolvedWithTime > 0 ? (totalResolutionTime / resolvedWithTime / (1000 * 60 * 60)) : 0,
       byClassification,
       byType: types,
       topUsersByLackOfTraining: Object.entries(trainingNeeded).map(([name, count]: any) => ({ name, count }))

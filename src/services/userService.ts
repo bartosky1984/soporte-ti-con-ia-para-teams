@@ -36,18 +36,27 @@ export const userService = {
   },
 
   getAllUsers: async (): Promise<User[]> => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('name');
-    
-    if (error) return [];
-    return data.map(d => ({
-      id: d.id,
-      name: d.name,
-      email: d.email,
-      role: d.role as UserRole
-    }));
+    try {
+      console.log("🔍 [UserService] Fetching all profiles from Supabase...");
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('name');
+      
+      if (error) {
+        console.error("❌ [UserService] Error fetching profiles:", error);
+        throw error;
+      }
+      return (data || []).map(d => ({
+        id: d.id,
+        name: d.name,
+        email: d.email,
+        role: d.role as UserRole
+      }));
+    } catch (e) {
+      console.error("❌ [UserService] Supabase getAllUsers failure:", e);
+      return []; // Return empty array on error to match original function signature
+    }
   },
 
   getTechnicians: async (): Promise<User[]> => {

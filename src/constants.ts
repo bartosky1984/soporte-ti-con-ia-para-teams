@@ -457,5 +457,21 @@ export const ICONS = {
     strokeLinecap: "round",
     strokeLinejoin: "round",
     className
-  }, React.createElement("path", { d: "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" }))
+  }, React.createElement("path", { d: "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" })),
+  AlertTriangle: ({ size = 20, className = "" }: IconProps) => React.createElement("svg", {
+    xmlns: "http://www.w3.org/2000/svg",
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "2",
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    className
+  }, [
+    React.createElement("path", { key: "p1", d: "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" }),
+    React.createElement("line", { key: "l1", x1: "12", y1: "9", x2: "12", y2: "13" }),
+    React.createElement("line", { key: "l2", x1: "12", y1: "17", x2: "12.01", y2: "17" })
+  ])
 };

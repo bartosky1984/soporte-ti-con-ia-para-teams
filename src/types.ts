@@ -57,6 +57,7 @@ export interface TicketComment {
   timestamp: string;
   attachmentUrl?: string; // URL for comment attachment
   attachment_url?: string; // Compatibility property for Supabase
+  hasAttachments?: boolean; // Calculated: has file in ticket or any comment
 }
 
 export interface ChatMessage {
@@ -95,4 +96,14 @@ export interface FAQ {
   category: 'General' | 'Hardware' | 'Software' | 'Redes';
   question: string;
   answer: string;
+}
+
+export interface FilterState {
+  status: TicketStatus | 'all';
+  creatorId: string | 'all';
+  technicianId: string | 'all' | 'unassigned';
+  searchText: string;
+  startDate: string | null;
+  endDate: string | null;
+  type?: TicketType | 'all';
 }

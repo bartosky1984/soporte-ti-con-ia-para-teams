@@ -42,10 +42,10 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({ user }) => {
     <div className="space-y-6 pb-12">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-teams-dark">IT Health Dashboard</h2>
+          <h2 className="text-2xl font-bold text-teams-dark">IT & Services Health Dashboard</h2>
           <p className="text-sm text-gray-500">
             {user.role === UserRole.USER ? '' : 
-             (user.role === UserRole.ADMIN || user.role === UserRole.LEAD_TECHNICIAN) ? 'Vista Global de Rendimiento' : `Resumen de Rendimiento: ${user.name}`}
+             (user.role === UserRole.ADMIN || user.role === UserRole.LEAD_TECHNICIAN) ? 'Vista de Supervisión Global' : `Rendimiento del Técnico: ${user.name}`}
           </p>
         </div>
         <button 
@@ -78,10 +78,11 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({ user }) => {
           color="text-orange-600"
         />
         <MetricCard 
-          title="Tiempo Medio Resolución" 
-          value={`${stats.avgResolutionTimeHours.toFixed(1)}h`} 
+          title="Cumplimiento SLA" 
+          value={stats.totalTickets > 0 ? `${Math.round((stats.resolvedTickets / stats.totalTickets) * 100)}%` : '-%'} 
           icon={<ICONS.Sparkles />} 
           color="text-blue-600"
+          subtitle="Objetivo: >90%"
         />
       </div>
 
@@ -182,7 +183,7 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({ user }) => {
   );
 };
 
-const MetricCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; color: string }> = ({ title, value, icon, color }) => (
+const MetricCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; color: string; subtitle?: string }> = ({ title, value, icon, color, subtitle }) => (
   <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4" role="status" aria-label={`${title}: ${value}`}>
     <div className={`p-3 rounded-lg bg-gray-50 ${color}`} aria-hidden="true">
       {icon}
@@ -190,6 +191,7 @@ const MetricCard: React.FC<{ title: string; value: string | number; icon: React.
     <div>
       <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</p>
       <p className={`text-2xl font-bold ${color}`}>{value}</p>
+      {subtitle && <p className="text-[10px] text-gray-400 mt-1">{subtitle}</p>}
     </div>
   </div>
 );

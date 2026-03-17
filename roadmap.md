@@ -49,6 +49,13 @@ Este documento detalla los pasos seguidos y los hitos pendientes para completar 
 - [x] **Sincronización en Vivo**: Actualización instantánea de estados de tickets en el Panel y Kanban.
 - [-] ~~**Asistente IA**~~ (Postergado para v2.0): Desactivado en el MVP para simplificación del flujo inicial.
 
+## 🏢 Fase 6: Escalado Profesional & Workflow (Completada)
+- [x] **Aislamiento por Departamentos**: Vistas filtradas por defecto para TI y Servicios Generales.
+- [x] **Rol de Supervisor**: Panel de control global con métricas comparativas inter-departamentales.
+- [x] **Monitoreo de SLA**: Indicadores visuales de tickets fuera de tiempo (>24h sin respuesta/resolución).
+- [x] **Auditoría Extendida**: Trazabilidad completa de cada cambio en prioridad, asignación y clasificación.
+- [x] **Optimización para 100 Usuarios**: Mejoras en búsqueda, filtrado y rendimiento de listas.
+
 ## 🔜 Próximas Versiones (v2.0)
 - [ ] **Estabilización de Asistente IA**: Depuración de errores en la integración con Gemini y mejora de manejo de errores.
 - [ ] **IA Predictiva**: Sugerencia automática de técnicos basada en la carga de trabajo y especialidad.
