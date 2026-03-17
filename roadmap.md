@@ -47,7 +47,12 @@ Este documento detalla los pasos seguidos y los hitos pendientes para completar 
 - [x] **Dashboard de Usuario**: Panel con KPIs y estadísticas personalizadas para empleados.
 - [x] **Kanban para Empleados**: Tablero visual filtrado por tickets propios con restricciones de rol.
 - [x] **Sincronización en Vivo**: Actualización instantánea de estados de tickets en el Panel y Kanban.
-- [ ] **Estabilización de Asistente IA**: Depuración de errores en la integración con Gemini Pro y mejora de manejo de errores.
+- [-] ~~**Asistente IA**~~ (Postergado para v2.0): Desactivado en el MVP para simplificación del flujo inicial.
+
+## 🔜 Próximas Versiones (v2.0)
+- [ ] **Estabilización de Asistente IA**: Depuración de errores en la integración con Gemini y mejora de manejo de errores.
+- [ ] **IA Predictiva**: Sugerencia automática de técnicos basada en la carga de trabajo y especialidad.
+- [ ] **Multilenguaje**: Soporte completo para inglés y otros idiomas.
 
 ---
 *Este roadmap es un documento vivo y se actualizará a medida que avancemos en los objetivos.*

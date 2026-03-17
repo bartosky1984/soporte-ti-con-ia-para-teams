@@ -13,8 +13,6 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
   const [tipo, setTipo] = useState<TicketType>(TicketType.IT);
   const [descripcion, setDescripcion] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiSuggestion, setAiSuggestion] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -27,7 +25,6 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
     try {
       let attachmentUrl = undefined;
       if (selectedFile) {
-        setAiSuggestion("Subiendo archivos...");
         attachmentUrl = await storageService.uploadFile(selectedFile) || undefined;
       }
       await onSubmit({ tipo, descripcion, attachmentUrl });
@@ -36,46 +33,10 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setSelectedFile(file);
-
-    setIsAnalyzing(true);
-    setAiSuggestion('');
-
-    try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result as string;
-        try {
-          const analysis = await geminiService.analyzeScreenshot(base64);
-          setDescripcion(prev => (prev ? prev + '\n\n' : '') + "[Análisis IA]: " + analysis);
-          setAiSuggestion("Captura analizada con éxito. Descripción actualizada.");
-        } catch (err) {
-          setAiSuggestion("Error al analizar la imagen.");
-        } finally {
-          setIsAnalyzing(false);
-        }
-      };
-      reader.readAsDataURL(file);
-    } catch (err) {
-      console.error(err);
-      setIsAnalyzing(false);
-    }
-  };
-
-  const handleSmartCheck = async () => {
-    if (descripcion.length < 5) return;
-    setIsAnalyzing(true);
-    try {
-      const suggestion = await geminiService.analyzeTicket(descripcion);
-      setAiSuggestion(suggestion);
-    } catch (e) {
-      // ignore
-    } finally {
-      setIsAnalyzing(false);
-    }
   };
 
   return (
@@ -100,36 +61,27 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
       <div className="mb-4">
         <label htmlFor="ticket-description" className="block text-sm font-medium text-gray-700 mb-1">
           Descripción
-          {isAnalyzing && <span className="ml-2 text-xs text-teams-purple animate-pulse" aria-live="polite">IA Analizando...</span>}
         </label>
         <textarea
           id="ticket-description"
           value={descripcion}
           onChange={(e) => setDescripcion(e.target.value)}
-          onBlur={handleSmartCheck}
           rows={4}
           className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-teams-purple focus:outline-none bg-white text-gray-900 placeholder-gray-500"
           placeholder="Describe tu problema..."
           aria-required="true"
         />
-        {aiSuggestion && (
-          <div className="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100 flex items-start" aria-live="polite">
-            <span className="mr-1 mt-0.5" aria-hidden="true"><ICONS.Sparkles /></span>
-            <span>{aiSuggestion}</span>
-          </div>
-        )}
       </div>
 
       <div className="mb-6">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={isAnalyzing}
           className="flex items-center text-sm text-teams-purple hover:text-purple-800 transition-colors focus:outline-none focus-visible:underline"
-          aria-label="Subir captura de pantalla para análisis automático por IA"
+          aria-label="Subir captura de pantalla o adjunto"
         >
           <span className="mr-1" aria-hidden="true"><ICONS.Image /></span>
-          {selectedFile ? `Imagen: ${selectedFile.name}` : 'Subir Captura (Análisis IA)'}
+          {selectedFile ? `Archivo: ${selectedFile.name}` : 'Subir Captura / Adjunto'}
         </button>
         {selectedFile && (
           <button 
@@ -146,7 +98,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
           ref={fileInputRef}
           className="hidden"
           accept="image/*"
-          onChange={handleImageUpload}
+          onChange={handleFileUpload}
         />
       </div>
 
@@ -160,7 +112,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
         </button>
         <button
           type="submit"
-          disabled={isSubmitting || isAnalyzing}
+          disabled={isSubmitting}
           className="bg-teams-purple text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-colors disabled:opacity-50 flex items-center"
         >
           {isSubmitting ? <ICONS.Spinner /> : 'Crear Ticket'}
@@ -168,4 +120,4 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
       </div>
     </form>
   );
-};
+};

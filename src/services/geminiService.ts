@@ -1,3 +1,8 @@
+/**
+ * Gemini Service - Handles all AI-related features.
+ * NOTE: As of MVP v1.0, the AI Assistant and automatic analysis features 
+ * have been disabled from the UI at the user's request, postponed for v2.0.
+ */
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Multi-layered variable detection for maximum compatibility (Vercel + Vite)

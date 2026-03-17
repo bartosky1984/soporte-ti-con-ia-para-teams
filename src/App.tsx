@@ -5,7 +5,6 @@ import { LoginScreen } from './components/LoginScreen';
 // Lazy loaded components for bundle optimization
 const KanbanBoard = lazy(() => import('./components/KanbanBoard').then(m => ({ default: m.KanbanBoard })));
 const TicketForm = lazy(() => import('./components/TicketForm').then(m => ({ default: m.TicketForm })));
-const ChatAssistant = lazy(() => import('./components/ChatAssistant').then(m => ({ default: m.ChatAssistant })));
 const AdminPanel = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
 const WikiPanel = lazy(() => import('./components/WikiPanel').then(m => ({ default: m.WikiPanel })));
 const StatsDashboard = lazy(() => import('./components/StatsDashboard').then(m => ({ default: m.StatsDashboard })));
@@ -25,7 +24,6 @@ import { ICONS, TEAMS_THEME_COLOR, ROLE_LABELS } from './constants';
 enum Tab {
   LIST = 'list',
   NEW = 'new',
-  CHAT = 'chat',
   WIKI = 'wiki',
   ADMIN = 'admin',
   STATS = 'stats',
@@ -387,18 +385,6 @@ export default function App() {
             >
                 Nuevo Ticket
             </button>
-            
-            <button
-                onClick={() => setActiveTab(Tab.CHAT)}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 flex items-center space-x-1 whitespace-nowrap ${
-                activeTab === Tab.CHAT
-                    ? 'border-teams-purple text-teams-purple' 
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-            >
-                <ICONS.Sparkles />
-                <span>Asistente IA</span>
-            </button>
 
             <button
                 onClick={() => setActiveTab(Tab.WIKI)}
@@ -556,25 +542,6 @@ export default function App() {
                     />
                   )}
 
-                  {activeTab === Tab.CHAT && (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="md:col-span-2">
-                          <ChatAssistant />
-                      </div>
-                      <div className="bg-white p-4 rounded-lg border border-gray-200 h-fit">
-                          <h3 className="font-semibold mb-2 text-sm">Sobre Soporte IA</h3>
-                          <p className="text-xs text-gray-500 mb-3">
-                          Nuestro Asistente IA usa <strong>Gemini Pro</strong> para ayudar a diagnosticar problemas antes de enviar un ticket.
-                          </p>
-                          <ul className="text-xs text-gray-500 list-disc list-inside space-y-1">
-                          <li><strong>Aprendizaje Automático:</strong> La IA conoce las soluciones de tickets pasados.</li>
-                          <li><strong>Wiki Integrada:</strong> Consulta las FAQs antes de responder.</li>
-                          <li>Haz preguntas técnicas</li>
-                          <li>Soluciona errores de software</li>
-                          </ul>
-                      </div>
-                      </div>
-                  )}
                   
                   {activeTab === Tab.WIKI && (
                       <WikiPanel />
