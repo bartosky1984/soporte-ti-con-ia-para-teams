@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Ticket, TicketStatus, TicketClassification, User } from '../types';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { Ticket, TicketStatus, TicketClassification, User, UserRole } from '../types';
 import { classificationService } from '../services/classificationService';
 import { ICONS } from '../constants';
 
@@ -24,9 +25,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onClassificationChange,
   currentUser
 }) => {
-  const [draggedTicketId, setDraggedTicketId] = useState<number | null>(null);
-  const [dragOverStatus, setDragOverStatus] = useState<TicketStatus | null>(null);
-  const [dragOverClassification, setDragOverClassification] = useState<string | null>(null);
   const [groupBy, setGroupBy] = useState<'status' | 'classification'>('status');
   const [classifications, setClassifications] = useState<TicketClassification[]>([]);
 
@@ -38,250 +36,210 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     loadClassifications();
   }, []);
 
-  const handleDragStart = (e: React.DragEvent, id: number) => {
-    setDraggedTicketId(id);
-    e.dataTransfer.setData('ticketId', id.toString());
-    e.dataTransfer.effectAllowed = 'move';
-    
-    // Create a ghost image or just let the browser handle it
-    const target = e.target as HTMLElement;
-    target.style.opacity = '0.4';
-  };
+  const onDragEnd = (result: DropResult) => {
+    const { destination, source, draggableId } = result;
 
-  const handleDragEnd = (e: React.DragEvent) => {
-    const target = e.target as HTMLElement;
-    target.style.opacity = '1';
-    setDraggedTicketId(null);
-    setDragOverStatus(null);
-    setDragOverClassification(null);
-  };
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId) return;
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDragEnterStatus = (status: TicketStatus) => {
-    setDragOverStatus(status);
-  };
-
-  const handleDragLeaveStatus = () => {
-    setDragOverStatus(null);
-  };
-
-  const handleDragEnterClassification = (id: string) => {
-    setDragOverClassification(id);
-  };
-
-  const handleDragLeaveClassification = () => {
-    setDragOverClassification(null);
-  };
-
-  const handleDropStatus = (e: React.DragEvent, status: TicketStatus) => {
-    e.preventDefault();
-    setDragOverStatus(null);
-    
-    const id = Number(e.dataTransfer.getData('ticketId'));
-    if (!id) return;
-
+    const id = Number(draggableId);
     const ticket = tickets.find(t => t.id === id);
     if (!ticket) return;
 
-    // Enforce classification for resolved status
-    if (status === TicketStatus.RESOLVED && !ticket.classificationId) {
-      alert('Por favor, clasifica el ticket antes de resolverlo. Esto es necesario para las estadísticas de salud IT.');
-      return;
-    }
+    // Normalize role check (handle potential DB case differences)
+    const userRole = currentUser?.role?.toString().toUpperCase();
+    const isUser = userRole === 'USER';
 
-    if (ticket.estado !== status) {
-      onStatusChange(id, status);
-    }
-  };
+    console.log(`[KanbanBoard] User: ${currentUser?.name}, Role: ${userRole}, isUser: ${isUser}`);
 
-  const handleDropClassification = (e: React.DragEvent, classificationId: string) => {
-    e.preventDefault();
-    setDragOverClassification(null);
-    
-    const id = Number(e.dataTransfer.getData('ticketId'));
-    if (!id) return;
+    if (groupBy === 'status') {
+      const newStatus = destination.droppableId as TicketStatus;
+      
+      // SECURITY: Regular users can ONLY drag to RE-OPEN (from Resolved to other status)
+      if (isUser && ticket.estado !== TicketStatus.RESOLVED) {
+        console.warn(`[Security] User ${currentUser?.name} tried to move a non-resolved ticket.`);
+        return;
+      }
 
-    const ticket = tickets.find(t => t.id === id);
-    if (!ticket) return;
+      // Enforce classification for resolved status
+      if (newStatus === TicketStatus.RESOLVED && !ticket.classificationId) {
+        alert('Por favor, clasifica el ticket antes de resolverlo. Esto es necesario para las estadísticas de salud IT.');
+        return;
+      }
 
-    if (ticket.classificationId !== (classificationId || undefined)) {
+      onStatusChange(id, newStatus);
+    } else {
+      // Regular users cannot reclassify
+      if (isUser) {
+        console.warn(`[Security] User ${currentUser?.name} tried to reclassify a ticket via drag.`);
+        return;
+      }
+
+      const newClassificationId = destination.droppableId === 'unclassified' ? '' : destination.droppableId;
       if (onClassificationChange) {
-        onClassificationChange(id, classificationId);
+        onClassificationChange(id, newClassificationId);
       }
     }
   };
 
-   const renderTicketCard = (ticket: Ticket) => {
+  const renderTicketCard = (ticket: Ticket, index: number) => {
     const hasUnread = (ticket.unreadCount || 0) > 0;
     const messageCount = ticket.messageCount || 0;
+    
+    // Normalize role check
+    const userRole = currentUser?.role?.toString().toUpperCase();
+    const isUser = userRole === 'USER';
+    const isAdminOrTech = userRole === 'ADMIN' || userRole === 'TECHNICIAN' || userRole === 'LEAD_TECHNICIAN';
+
+    // Regular users can only drag tickets that are RESOLVED (to re-open them)
+    // Technicians and Admins can always drag
+    const canDrag = isAdminOrTech || (isUser && groupBy === 'status' && ticket.estado === TicketStatus.RESOLVED);
 
     return (
-      <div
-        key={ticket.id}
-        draggable
-        onDragStart={(e) => handleDragStart(e, ticket.id)}
-        onDragEnd={handleDragEnd}
-        onClick={() => onSelectTicket(ticket)}
-        className={`bg-white p-3 rounded shadow-sm border cursor-grab active:cursor-grabbing hover:shadow-md transition-all ${
-          hasUnread ? 'border-l-4 border-l-blue-500' : 'border-gray-200'
-        } ${draggedTicketId === ticket.id ? 'opacity-40 scale-95' : 'opacity-100'}`}
-      >
-        <div className="flex justify-between items-start mb-2">
-          <span className="text-xs font-mono text-gray-400">#{ticket.id}</span>
-          <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-            {ticket.tipo}
+      <Draggable key={ticket.id.toString()} draggableId={ticket.id.toString()} index={index} isDragDisabled={!canDrag}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.draggableProps}
+            {...provided.dragHandleProps}
+            onClick={() => onSelectTicket(ticket)}
+            className={`bg-white p-3 rounded-xl shadow-sm border mb-3 transition-all ${
+              snapshot.isDragging ? 'shadow-lg rotate-1 scale-[1.02] z-50' : 'hover:shadow-md'
+            } ${hasUnread ? 'border-l-4 border-l-teams-purple ring-1 ring-teams-purple/5' : 'border-gray-200'} ${
+              !canDrag ? 'cursor-default opacity-85 hover:bg-gray-50' : 'cursor-grab bg-white'
+            }`}
+          >
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex items-center gap-1">
+                {!canDrag && isUser && <div title="Solo visualización"><ICONS.Shield size={10} className="text-gray-300" /></div>}
+                <span className="text-[10px] font-bold text-gray-400">#{ticket.id}</span>
+              </div>
+              <span className="text-[9px] font-bold text-teams-purple bg-teams-purple/5 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                {ticket.tipo}
+              </span>
+            </div>
+            
+            <h4 className={`text-sm text-gray-800 line-clamp-2 leading-snug mb-3 ${hasUnread ? 'font-bold' : 'font-medium'}`}>
+              {ticket.titulo || ticket.descripcion}
+            </h4>
+
+            <div className="flex justify-between items-center mt-auto pt-3 border-t border-gray-50">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <div className="w-5 h-5 rounded-full bg-teams-purple/10 flex items-center justify-center text-[10px] font-bold text-teams-purple">
+                  {ticket.userName.charAt(0)}
+                </div>
+                <div className="text-[10px] text-gray-500 truncate font-medium">
+                  {ticket.userName}
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2 shrink-0">
+                {ticket.classificationId && (
+                  <span className="text-[8px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-bold">
+                    {classifications.find(c => c.id === ticket.classificationId)?.name.split(' ')[0]}
+                  </span>
+                )}
+                {ticket.hasAttachments && (
+                  <ICONS.Paperclip size={10} className="text-gray-400" />
+                )}
+                {messageCount > 0 && (
+                  <div className="relative">
+                    <div className={`flex items-center space-x-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${hasUnread ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-white' : 'bg-gray-100 text-gray-500'}`}>
+                      <ICONS.MessageCircle size={10} />
+                      <span>{messageCount}</span>
+                    </div>
+                    {hasUnread && (
+                      <span className="absolute -top-1 -right-1 flex h-2 w-2 rounded-full bg-red-500 ring-1 ring-white animate-pulse" />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </Draggable>
+    );
+  };
+
+  const renderColumn = (id: string, title: string, columnTickets: Ticket[], statusColor?: string) => {
+    return (
+      <div key={id} className="flex-1 min-w-[300px] flex flex-col h-full bg-[#F5F5F7] rounded-xl border border-gray-200/50">
+        <div className={`p-3 font-bold text-gray-700 flex justify-between items-center border-b ${statusColor || 'border-gray-200'}`}>
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${statusColor?.replace('border', 'bg') || 'bg-teams-purple'}`} />
+            <span className="text-xs uppercase tracking-widest">{title}</span>
+          </div>
+          <span className="bg-white/80 border border-gray-200 text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+            {columnTickets.length}
           </span>
         </div>
         
-        <h4 className={`text-sm text-gray-800 line-clamp-2 mb-2 ${hasUnread ? 'font-bold' : ''}`}>
-          {ticket.titulo || ticket.descripcion}
-        </h4>
-
-        <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-50">
-          <div className="text-[10px] text-gray-400 truncate max-w-[120px]">
-             {ticket.userName}
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            {ticket.classificationId && (
-              <span className="text-[9px] bg-teams-purple/10 text-teams-purple px-1 rounded">
-                {classifications.find(c => c.id === ticket.classificationId)?.name.split(' ')[0]}
-              </span>
-            )}
-            {ticket.hasAttachments && (
-              <div className="text-gray-400" title="Contiene adjuntos">
-                <ICONS.Paperclip size={10} />
-              </div>
-            )}
-            {messageCount > 0 && (
-              <div className={`flex items-center space-x-1 text-[10px] px-1.5 py-0.5 rounded ${hasUnread ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-400'}`}>
-                <ICONS.MessageCircle size={10} />
-                <span>{messageCount}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderStatusColumn = (status: TicketStatus) => {
-    const columnTickets = tickets.filter(t => t.estado === status);
-    const config = statusConfig[status];
-    const isOver = dragOverStatus === status;
-
-    return (
-      <div 
-        key={status}
-        className={`flex-1 min-w-[280px] bg-gray-50 rounded-lg p-3 border-2 transition-all flex flex-col h-full ${
-          isOver ? 'border-teams-purple bg-teams-purple/5 scale-[1.02]' : 'border-transparent'
-        }`}
-        onDragOver={handleDragOver}
-        onDragEnter={() => handleDragEnterStatus(status)}
-        onDragLeave={handleDragLeaveStatus}
-        onDrop={(e) => handleDropStatus(e, status)}
-      >
-        <div className={`font-semibold mb-3 pb-2 border-b-2 ${config.color} text-gray-700 flex justify-between items-center`}>
-          <div className="flex items-center gap-2">
-            <span>{config.title}</span>
-            {status === TicketStatus.RESOLVED && (
-              <span className="text-[10px] font-normal text-gray-400">(Requiere clasificación)</span>
-            )}
-          </div>
-          <span className="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full">{columnTickets.length}</span>
-        </div>
-        
-        <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-          {columnTickets.length === 0 ? (
-            <div className={`text-center text-gray-400 text-xs py-12 border-2 border-dashed rounded transition-colors ${
-              isOver ? 'border-teams-purple text-teams-purple' : 'border-gray-200'
-            }`}>
-              Arrastra tickets aquí
+        <Droppable droppableId={id}>
+          {(provided, snapshot) => (
+            <div
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              className={`flex-1 p-3 overflow-y-auto min-h-[150px] transition-colors duration-200 ${
+                snapshot.isDraggingOver ? 'bg-teams-purple/5' : ''
+              }`}
+            >
+              {columnTickets.map((t, index) => renderTicketCard(t, index))}
+              {provided.placeholder}
+              
+              {columnTickets.length === 0 && !snapshot.isDraggingOver && (
+                <div className="h-full flex flex-col items-center justify-center text-gray-400 py-10 opacity-50">
+                  <ICONS.LayoutGrid size={24} className="mb-2" />
+                  <p className="text-[10px] font-medium uppercase tracking-tighter">Sin tickets</p>
+                </div>
+              )}
             </div>
-          ) : (
-            columnTickets.map(renderTicketCard)
           )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderClassificationColumn = (classification: TicketClassification | null) => {
-    const columnTickets = tickets.filter(t => 
-      classification ? t.classificationId === classification.id : !t.classificationId
-    );
-    const title = classification ? classification.name : 'Sin clasificar';
-    const id = classification ? classification.id : '';
-    const isOver = dragOverClassification === id;
-
-    return (
-      <div 
-        key={id || 'unclassified'}
-        className={`flex-1 min-w-[280px] bg-gray-50 rounded-lg p-3 border-2 transition-all flex flex-col h-full ${
-          isOver ? 'border-teams-purple bg-teams-purple/5 scale-[1.02]' : 'border-transparent'
-        }`}
-        onDragOver={handleDragOver}
-        onDragEnter={() => handleDragEnterClassification(id)}
-        onDragLeave={handleDragLeaveClassification}
-        onDrop={(e) => handleDropClassification(e, id)}
-      >
-        <div className={`font-semibold mb-3 pb-2 border-b-2 border-teams-purple text-gray-700 flex justify-between items-center`}>
-          <span>{title}</span>
-          <span className="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full">{columnTickets.length}</span>
-        </div>
-        
-        <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-          {columnTickets.length === 0 ? (
-            <div className={`text-center text-gray-400 text-xs py-12 border-2 border-dashed rounded transition-colors ${
-              isOver ? 'border-teams-purple text-teams-purple' : 'border-gray-200'
-            }`}>
-              Arrastra tickets aquí
-            </div>
-          ) : (
-            columnTickets.map(renderTicketCard)
-          )}
-        </div>
+        </Droppable>
       </div>
     );
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-200px)]">
-      <div className="flex justify-end mb-4">
-        <div className="bg-white border border-gray-200 rounded-md inline-flex text-sm">
+    <div className="flex flex-col h-[calc(100vh-220px)]">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+          <ICONS.LayoutGrid size={14} className="text-teams-purple" />
+          Tablero Kanban {groupBy === 'status' ? '(Estado)' : '(Clasificación)'}
+        </h3>
+        <div className="bg-gray-100 p-1 rounded-lg inline-flex shadow-inner">
           <button
             onClick={() => setGroupBy('status')}
-            className={`px-3 py-1.5 rounded-l-md transition-colors ${groupBy === 'status' ? 'bg-teams-purple text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${groupBy === 'status' ? 'bg-white shadow-sm text-teams-purple' : 'text-gray-500 hover:text-gray-700'}`}
           >
-            Por Estado
+            Estado
           </button>
           <button
             onClick={() => setGroupBy('classification')}
-            className={`px-3 py-1.5 rounded-r-md transition-colors ${groupBy === 'classification' ? 'bg-teams-purple text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${groupBy === 'classification' ? 'bg-white shadow-sm text-teams-purple' : 'text-gray-500 hover:text-gray-700'}`}
           >
-            Por Clasificación
+            Clasificación
           </button>
         </div>
       </div>
       
-      <div className="flex gap-4 w-full flex-1 items-stretch overflow-x-auto pb-2">
-        {groupBy === 'status' ? (
-          <>
-            {renderStatusColumn(TicketStatus.PENDING)}
-            {renderStatusColumn(TicketStatus.IN_PROGRESS)}
-            {renderStatusColumn(TicketStatus.RESOLVED)}
-          </>
-        ) : (
-          <>
-            {renderClassificationColumn(null)}
-            {classifications.map(c => renderClassificationColumn(c))}
-          </>
-        )}
-      </div>
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="flex gap-5 w-full flex-1 items-stretch overflow-x-auto pb-4 custom-scrollbar">
+          {groupBy === 'status' ? (
+            <>
+              {renderColumn(TicketStatus.PENDING, 'Pendiente', tickets.filter(t => t.estado === TicketStatus.PENDING), 'border-red-400')}
+              {renderColumn(TicketStatus.IN_PROGRESS, 'En Progreso', tickets.filter(t => t.estado === TicketStatus.IN_PROGRESS), 'border-amber-400')}
+              {renderColumn(TicketStatus.RESOLVED, 'Resuelto', tickets.filter(t => t.estado === TicketStatus.RESOLVED), 'border-emerald-400')}
+            </>
+          ) : (
+            <>
+              {renderColumn('unclassified', 'Sin Clasificar', tickets.filter(t => !t.classificationId), 'border-gray-400')}
+              {classifications.map(c => 
+                renderColumn(c.id, c.name, tickets.filter(t => t.classificationId === c.id), 'border-indigo-400')
+              )}
+            </>
+          )}
+        </div>
+      </DragDropContext>
     </div>
   );
 };

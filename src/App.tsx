@@ -149,6 +149,7 @@ export default function App() {
 
       // Subscribe to All Comments to update unread counts in the list
       const unsubscribeAllComments = ticketService.subscribeToAllComments(() => {
+        console.log("💬 [App] New comment detected, refreshing tickets...");
         fetchTickets();
       });
 
@@ -230,6 +231,11 @@ export default function App() {
 
   // Filtering Logic
   const filteredTickets = tickets.filter(ticket => {
+    // SECURITY: Regular users should ONLY see tickets they created
+    if (user.role === UserRole.USER) {
+      return ticket.userId === user.id;
+    }
+
     if (!filters) return true;
 
     // Automatic department filter for technicians if no manual classification filter is active

@@ -119,22 +119,24 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({ onFilterChange, cu
               </select>
             </div>
 
-            {/* Creator Filter */}
-            <div>
-              <label htmlFor="creatorId" className="block text-xs font-semibold text-gray-500 uppercase mb-1">Creado por</label>
-              <select
-                id="creatorId"
-                name="creatorId"
-                value={filters.creatorId}
-                onChange={handleChange}
-                className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-teams-purple focus:border-teams-purple sm:text-sm"
-              >
-                <option value="all">Cualquier usuario</option>
-                {users.map(u => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
-            </div>
+            {/* Creator Filter - Only for staff */}
+            {currentUser.role !== UserRole.USER && (
+              <div>
+                <label htmlFor="creatorId" className="block text-xs font-semibold text-gray-500 uppercase mb-1">Creado por</label>
+                <select
+                  id="creatorId"
+                  name="creatorId"
+                  value={filters.creatorId}
+                  onChange={handleChange}
+                  className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-teams-purple focus:border-teams-purple sm:text-sm"
+                >
+                  <option value="all">Cualquier usuario</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Technician Filter */}
             <div>

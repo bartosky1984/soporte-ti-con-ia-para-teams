@@ -70,6 +70,10 @@ export const ticketService = {
                   c.userId !== currentUserId && new Date(c.timestamp).getTime() > lastReadTime
                 ).length;
                 
+                if (unreadCount > 0) {
+                  console.log(`🎯 [TicketService] Ticket #${t.id} has ${unreadCount} unread. Last read: ${new Date(lastReadTime).toISOString()}`);
+                }
+                
                 const hasAttachments = !!t.attachmentUrl || (ticketComments || []).some((c: any) => c.attachmentUrl || c.attachment_url);
                 
                 return { 
