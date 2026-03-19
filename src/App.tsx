@@ -568,8 +568,25 @@ export default function App() {
                   {activeTab === Tab.DASHBOARD && (
                     <UserDashboard 
                       tickets={tickets.filter(t => {
+                        // SECURITY: Match the same logic used for the main list visibility
                         if (user.role === UserRole.USER) return t.userId === user.id;
-                        return t.technicianId === user.id;
+                        if (user.role === UserRole.TECHNICIAN || user.role === UserRole.LEAD_TECHNICIAN) {
+                          const isAssignedToMe = t.technicianId === user.id;
+                          const isUnassigned = !t.technicianId;
+                          // Also must match department if relevant (simplified here to match list's core security)
+                          if (!isAssignedToMe && !isUnassigned) return false;
+                          
+                          // Optional: apply department filter in dashboard too for strict consistency
+                          const email = user.email?.toLowerCase() || '';
+                          const name = user.name?.toLowerCase() || '';
+                          if (email.includes('it') || name.includes('it')) {
+                            if (t.tipo !== TicketType.IT) return false;
+                          } else if (email.includes('servicios') || name.includes('servicios') || email.includes('general')) {
+                            if (t.tipo !== TicketType.GENERAL) return false;
+                          }
+                          return true;
+                        }
+                        return true; // Admin sees all
                       })}
                       onCreateTicket={() => setActiveTab(Tab.NEW)}
                       onViewTickets={(view) => {
