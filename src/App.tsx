@@ -567,7 +567,10 @@ export default function App() {
 
                   {activeTab === Tab.DASHBOARD && (
                     <UserDashboard 
-                      tickets={tickets.filter(t => t.userId === user.id)}
+                      tickets={tickets.filter(t => {
+                        if (user.role === UserRole.USER) return t.userId === user.id;
+                        return t.technicianId === user.id;
+                      })}
                       onCreateTicket={() => setActiveTab(Tab.NEW)}
                       onViewTickets={(view) => {
                         setViewMode(view as ViewMode);

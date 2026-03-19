@@ -37,14 +37,22 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({ onFilterChange, cu
     const loadFilterData = async () => {
       const allUsers = await userService.getAllUsers();
       setUsers(allUsers);
-      setTechnicians(allUsers.filter(u => 
+      
+      let staff = allUsers.filter(u => 
         u.role === UserRole.TECHNICIAN || 
         u.role === UserRole.LEAD_TECHNICIAN || 
         u.role === UserRole.ADMIN
-      ));
+      );
+
+      // SECURITY: Technicians and Lead Technicians should only be able to filter for themselves or unassigned
+      if (currentUser.role === UserRole.TECHNICIAN || currentUser.role === UserRole.LEAD_TECHNICIAN) {
+        staff = staff.filter(u => u.id === currentUser.id);
+      }
+      
+      setTechnicians(staff);
     };
     loadFilterData();
-  }, []);
+  }, [currentUser]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
