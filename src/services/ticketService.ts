@@ -677,7 +677,7 @@ export const ticketService = {
     if (!isDbEnabled) return () => {};
 
     const channel = supabase
-      .channel(`public:comments:ticketId=eq.${ticketId}`)
+      .channel(`comments-${ticketId}`)
       .on(
         'postgres_changes',
         {
@@ -686,9 +686,28 @@ export const ticketService = {
           table: 'comments',
           filter: `ticketId=eq.${ticketId}`
         },
-        () => {
-          callback();
-        }
+        () => callback()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  subscribeToAllComments: (callback: () => void) => {
+    if (!isDbEnabled) return () => {};
+
+    const channel = supabase
+      .channel('all-comments')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'comments'
+        },
+        () => callback()
       )
       .subscribe();
 

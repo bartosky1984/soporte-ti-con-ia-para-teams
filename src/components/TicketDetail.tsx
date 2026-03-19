@@ -398,41 +398,59 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                 const isTech = comment.userRole === UserRole.TECHNICIAN || comment.userRole === UserRole.ADMIN || comment.userRole === UserRole.LEAD_TECHNICIAN;
                 
                 return (
-                  <div key={comment.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] rounded-lg p-3 text-sm border ${
+                  <div key={comment.id} className={`flex w-full mb-1 ${isMe ? 'justify-end pl-10' : 'justify-start pr-10'}`}>
+                    <div className={`relative max-w-full rounded-2xl px-3 py-2 text-sm shadow-sm transition-all animate-in fade-in slide-in-from-bottom-2 ${
                       isMe 
-                        ? 'bg-blue-50 border-blue-100 text-blue-900 rounded-br-none' 
+                        ? 'bg-[#E7E9FF] text-[#242424] rounded-tr-none border border-[#6264A720]' 
                         : isTech 
-                            ? 'bg-orange-50 border-orange-100 text-orange-900 rounded-bl-none'
-                            : 'bg-gray-100 border-gray-200 text-gray-800 rounded-bl-none'
+                            ? 'bg-[#FEEFD0] text-[#422409] rounded-tl-none border border-orange-200'
+                            : 'bg-white text-gray-800 rounded-tl-none border border-gray-200'
                     }`}>
-                      <div className="flex justify-between items-baseline mb-1 gap-4">
-                        <span className="font-semibold text-xs">
-                            {comment.userName} {isTech && !isMe && '(Soporte)'}
-                        </span>
-                        <span className="text-[10px] opacity-60">
-                            {new Date(comment.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        </span>
-                      </div>
-                      <p>{comment.text}</p>
-                      {comment.attachmentUrl && (
-                        <div className="mt-2 pt-2 border-t border-black border-opacity-5">
-                          <a 
-                            href={comment.attachmentUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="block rounded overflow-hidden border border-black border-opacity-10 hover:opacity-90 transition-opacity"
-                          >
-                            {comment.attachmentUrl.startsWith('data:image') || comment.attachmentUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
-                              <img src={comment.attachmentUrl} alt="Adjunto" className="max-h-48 w-auto object-cover" />
-                            ) : (
-                              <div className="p-2 bg-white flex items-center gap-2 text-xs">
-                                <ICONS.Image size={14} /> <span>Ver archivo adjunto</span>
-                              </div>
-                            )}
-                          </a>
+                      {/* Tail Decorations */}
+                      <div className={`absolute top-0 w-2 h-2 ${
+                        isMe 
+                          ? '-right-1 bg-[#E7E9FF] border-t border-r border-[#6264A720]' 
+                          : '-left-1 bg-inherit border-t border-l border-inherit'
+                      } rotate-45 transform origin-center z-0 hidden sm:block`} style={{ top: '6px' }} />
+
+                      <div className="relative z-10">
+                        {!isMe && (
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className={`font-bold text-[10px] uppercase tracking-wider ${isTech ? 'text-orange-700' : 'text-teams-purple'}`}>
+                                {comment.userName} {isTech && '(Soporte)'}
+                            </span>
+                          </div>
+                        )}
+                        
+                        <div className="leading-relaxed break-words whitespace-pre-wrap">
+                          {comment.text}
                         </div>
-                      )}
+
+                        <div className={`flex items-center gap-1 mt-1 justify-end opacity-60 text-[10px]`}>
+                            <span>{new Date(comment.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                            {isMe && <ICONS.Check size={10} className="text-blue-600" aria-hidden="true" />}
+                        </div>
+
+                        {comment.attachmentUrl && (
+                          <div className="mt-2 pt-2 border-t border-black border-opacity-5">
+                            <a 
+                              href={comment.attachmentUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="block rounded-lg overflow-hidden border border-black border-opacity-10 hover:opacity-95 transition-opacity bg-white"
+                            >
+                              {comment.attachmentUrl.startsWith('data:image') || comment.attachmentUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                <img src={comment.attachmentUrl} alt="Adjunto" className="max-h-60 w-auto object-cover mx-auto" />
+                              ) : (
+                                <div className="p-3 flex items-center gap-3 text-xs text-teams-purple">
+                                  <div className="bg-purple-50 p-2 rounded-lg"><ICONS.Image size={18} /></div>
+                                  <span className="font-medium">Ver archivo adjunto</span>
+                                </div>
+                              )}
+                            </a>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

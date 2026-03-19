@@ -147,9 +147,15 @@ export default function App() {
         fetchTickets();
       });
 
+      // Subscribe to All Comments to update unread counts in the list
+      const unsubscribeAllComments = ticketService.subscribeToAllComments(() => {
+        fetchTickets();
+      });
+
       return () => {
         unsubscribeNotifs();
         unsubscribeTickets();
+        unsubscribeAllComments();
       };
     }
   }, [user]);
