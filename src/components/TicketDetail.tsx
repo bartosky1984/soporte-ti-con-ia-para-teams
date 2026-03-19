@@ -138,6 +138,15 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
     }
   };
 
+  const handleTypeChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newType = e.target.value as TicketType;
+    const updatedTicket = await ticketService.updateTicketType(ticket.id, newType, currentUser, ticket.tipo);
+    if (updatedTicket && onTicketUpdate) {
+      onTicketUpdate(updatedTicket);
+      await loadAudits();
+    }
+  };
+
   const handleAssignTechnician = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const techId = e.target.value;
     if (!techId) return;
@@ -180,8 +189,8 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             <ICONS.ArrowLeft aria-hidden="true" />
           </button>
           <div className="flex-1">
-            {/* SLA Warning Banner */}
-            {ticket.estado !== TicketStatus.RESOLVED && (
+            {/* SLA Warning Banner - Only for management/technicians */}
+            {canManage && ticket.estado !== TicketStatus.RESOLVED && (
               (() => {
                 const createdDate = new Date(ticket.fecha).getTime();
                 const now = Date.now();
@@ -297,6 +306,24 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                   {!ticket.classificationId && (
                     <span className="text-[10px] text-red-500 font-medium italic" aria-live="assertive">Requerido para resolver</span>
                   )}
+                </div>
+              )}
+
+              {/* Department Dropdown (Lead Tech / Admin only) */}
+              {canAssign && (
+                <div className="flex items-center gap-2">
+                  <label htmlFor="type-select" className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                    <ICONS.Shield size={12} aria-hidden="true" /> Rama:
+                  </label>
+                  <select 
+                    id="type-select"
+                    value={ticket.tipo} 
+                    onChange={handleTypeChange}
+                    className="text-xs border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-teams-purple font-semibold"
+                  >
+                    <option value={TicketType.IT}>Informática</option>
+                    <option value={TicketType.GENERAL}>Servicios Generales</option>
+                  </select>
                 </div>
               )}
             </div>

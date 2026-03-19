@@ -504,6 +504,42 @@ export const ticketService = {
     return tickets[index];
   },
 
+  updateTicketType: async (id: number, tipo: TicketType, user: User, oldType: string): Promise<Ticket | null> => {
+    if (isDbEnabled) {
+      try {
+        const { data, error } = await supabase
+          .from('tickets')
+          .update({ tipo })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        
+        await ticketService.addAuditLog(id, user, 'TYPE_CHANGE', oldType, tipo);
+        
+        const ticket = data as any;
+        return {
+          ...ticket,
+          attachmentUrl: ticket.attachmentUrl || ticket.attachment_url
+        } as Ticket;
+      } catch (e) {
+        console.error("Supabase updateTicketType failed", e);
+      }
+    }
+
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return null;
+    const tickets: Ticket[] = JSON.parse(stored);
+    const index = tickets.findIndex(t => t.id === id);
+    if (index === -1) return null;
+
+    tickets[index].tipo = tipo;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+    await ticketService.addAuditLog(id, user, 'TYPE_CHANGE', oldType, tipo);
+    return tickets[index];
+  },
+
   assignTechnician: async (ticketId: number, technician: User): Promise<Ticket | null> => {
     if (isDbEnabled) {
       try {

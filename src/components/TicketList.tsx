@@ -63,9 +63,24 @@ export const TicketList: React.FC<TicketListProps> = ({
                   <span className={`px-2 py-0.5 text-xs rounded-full border font-medium ${statusColors[ticket.estado]}`} aria-label={`Estado: ${ticket.estado}`}>
                     {ticket.estado}
                   </span>
-                  <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded" aria-label={`Tipo: ${ticket.tipo}`}>
-                    {ticket.tipo}
-                  </span>
+
+                  {/* SLA Alert Indicator - Moved here between Type and Priority/Chat - Only for staff */}
+                  {canManage && ticket.estado !== TicketStatus.RESOLVED && (
+                    (() => {
+                      const createdDate = new Date(ticket.fecha).getTime();
+                      const now = Date.now();
+                      const diffHours = (now - createdDate) / (1000 * 60 * 60);
+                      if (diffHours > 48) {
+                        return (
+                          <span className="flex items-center gap-1 text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-bold" title="Excede el SLA de 48h">
+                            <ICONS.AlertTriangle size={10} className="shrink-0" />
+                            <span className="whitespace-nowrap">SLA<span className="hidden sm:inline"> ALERT</span></span>
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()
+                  )}
                   
                   {ticket.prioridad && (
                     <span className={`px-2 py-0.5 text-[10px] rounded font-bold uppercase ${
@@ -86,23 +101,6 @@ export const TicketList: React.FC<TicketListProps> = ({
                     </span>
                   )}
 
-                  {/* SLA Alert Indicator */}
-                  {ticket.estado !== TicketStatus.RESOLVED && (
-                    (() => {
-                      const createdDate = new Date(ticket.fecha).getTime();
-                      const now = Date.now();
-                      const diffHours = (now - createdDate) / (1000 * 60 * 60);
-                      if (diffHours > 48) {
-                        return (
-                          <span className="flex items-center gap-1 text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-bold" title="Excede el SLA de 48h">
-                            <ICONS.AlertTriangle size={10} className="shrink-0" />
-                            <span className="whitespace-nowrap">SLA<span className="hidden sm:inline"> ALERT</span></span>
-                          </span>
-                        );
-                      }
-                      return null;
-                    })()
-                  )}
                 </div>
 
                 <button 
@@ -116,7 +114,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                   <p className="text-xs text-gray-400 mt-1 flex items-center gap-2">
                     <span>{ticket.userName} · {new Date(ticket.fecha).toLocaleString()}</span>
                     {ticket.technicianName && (
-                      <span className="flex items-center gap-1 text-teams-purple bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100">
+                      <span className="flex items-center gap-1 text-teams-purple bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 whitespace-nowrap">
                         <ICONS.User size={10} aria-hidden="true" /> {ticket.technicianName}
                       </span>
                     )}
