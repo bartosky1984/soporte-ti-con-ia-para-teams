@@ -111,7 +111,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       }
       
       const added = await ticketService.addComment(ticket.id, newComment, currentUser, attachmentUrl);
-      setComments(prev => [...prev, added]);
+      // Removed manual setComments - the Realtime listener already handles updates automatically without duplicates
       setNewComment('');
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
