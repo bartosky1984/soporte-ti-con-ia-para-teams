@@ -236,9 +236,9 @@ export default function App() {
       return ticket.userId === user.id;
     }
 
-    // SECURITY: Technicians should ONLY see tickets assigned to them OR unassigned tickets
-    // (Lead Technicians and Admins can still see everything for management)
-    if (user.role === UserRole.TECHNICIAN) {
+    // SECURITY: Technicians and Lead Technicians should ONLY see tickets assigned to them OR unassigned tickets
+    // (Only Admins can see everything for global management)
+    if (user.role === UserRole.TECHNICIAN || user.role === UserRole.LEAD_TECHNICIAN) {
       const isAssignedToMe = ticket.technicianId === user.id;
       const isUnassigned = !ticket.technicianId;
       if (!isAssignedToMe && !isUnassigned) return false;
