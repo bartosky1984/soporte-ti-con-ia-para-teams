@@ -142,15 +142,23 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 {ticket.hasAttachments && (
                   <ICONS.Paperclip size={10} className="text-gray-400" />
                 )}
-                {messageCount > 0 && (
+                {ticket.hasMessages && (
                   <div className="relative">
                     <div className={`flex items-center space-x-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${hasUnread ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-white' : 'bg-gray-100 text-gray-500'}`}>
-                      <ICONS.MessageCircle size={10} />
-                      <span>{messageCount}</span>
+                      <div className="relative flex items-center gap-1">
+                        <ICONS.MessageCircle 
+                          size={14} 
+                          className={hasUnread ? "text-white" : "text-gray-500"}
+                          fill={hasUnread ? "white" : "none"} 
+                        />
+                        {hasUnread && (
+                          <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] text-white font-bold ring-1 ring-white animate-bounce-slow">
+                            {(ticket.unreadCount || 1)}
+                          </span>
+                        )}
+                        <span>{messageCount}</span>
+                      </div>
                     </div>
-                    {hasUnread && (
-                      <span className="absolute -top-1 -right-1 flex h-2 w-2 rounded-full bg-red-500 ring-1 ring-white animate-pulse" />
-                    )}
                   </div>
                 )}
               </div>

@@ -10,7 +10,7 @@ export const ROLE_LABELS = {
 
 export const TEAMS_THEME_COLOR = '#6264A7';
 
-type IconProps = { size?: number; className?: string };
+type IconProps = { size?: number; className?: string; fill?: string };
 
 export const ICONS = {
   Ticket: ({ size = 20, className = "" }: IconProps) => React.createElement("svg", {
@@ -27,12 +27,12 @@ export const ICONS = {
   }, React.createElement("path", {
     d: "M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"
   })),
-  Chat: ({ size = 20, className = "" }: IconProps) => React.createElement("svg", {
+  Chat: ({ size = 20, className = "", fill = "none" }: IconProps) => React.createElement("svg", {
     xmlns: "http://www.w3.org/2000/svg",
     width: size,
     height: size,
     viewBox: "0 0 24 24",
-    fill: "none",
+    fill: fill,
     stroke: "currentColor",
     strokeWidth: "2",
     strokeLinecap: "round",
@@ -41,12 +41,12 @@ export const ICONS = {
   }, React.createElement("path", {
     d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
   })),
-  MessageCircle: ({ size = 20, className = "" }: IconProps) => React.createElement("svg", {
+  MessageCircle: ({ size = 20, className = "", fill = "none" }: IconProps) => React.createElement("svg", {
     xmlns: "http://www.w3.org/2000/svg",
     width: size,
     height: size,
     viewBox: "0 0 24 24",
-    fill: "none",
+    fill: fill,
     stroke: "currentColor",
     strokeWidth: "2",
     strokeLinecap: "round",

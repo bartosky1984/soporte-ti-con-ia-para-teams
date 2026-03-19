@@ -178,10 +178,18 @@ export default function App() {
         }
       });
 
+      // Interval fallback for offline/sync issues
+      const syncInterval = setInterval(() => {
+        console.log("🔄 [App] Periodic sync refresh...");
+        fetchTickets();
+        fetchNotifications();
+      }, 15000); // 15 seconds
+
       return () => {
         unsubscribeNotifs();
         unsubscribeTickets();
         unsubscribeAllComments();
+        clearInterval(syncInterval);
       };
     }
   }, [user]);
