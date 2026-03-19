@@ -298,12 +298,14 @@ export default function App() {
       </div>
 
       {/* Header Landmark */}
-      <header role="banner" className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-10 w-full">
+      <header role="banner" className="bg-white border-b border-gray-200 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between shadow-sm sticky top-0 z-10 w-full">
         <div className="flex items-center space-x-3">
           <div className="bg-teams-purple p-1.5 rounded text-white">
             <ICONS.Ticket />
           </div>
-          <h1 className="text-xl font-semibold text-teams-purple tracking-tight">Tickets de Soporte</h1>
+          <h1 className="text-lg sm:text-xl font-semibold text-teams-purple tracking-tight">
+            <span className="hidden xs:inline">Tickets de </span>Soporte
+          </h1>
         </div>
         
         <div className="flex items-center space-x-4">
@@ -357,11 +359,11 @@ export default function App() {
       </header>
 
       {/* Main Content Landmark */}
-      <main role="main" id="main-content" className="w-full max-w-7xl mx-auto p-6 flex-grow" onClick={() => { if(showNotifications) setShowNotifications(false) }}>
+      <main role="main" id="main-content" className="w-full max-w-7xl mx-auto p-4 sm:p-6 flex-grow" onClick={() => { if(showNotifications) setShowNotifications(false) }}>
         
         {/* Navigation Tabs - Navigation Landmark */}
         {!selectedTicket && (
-            <nav aria-label="Navegación principal" className="flex space-x-1 border-b border-gray-300 mb-6 overflow-x-auto">
+            <nav aria-label="Navegación principal" className="flex space-x-1 border-b border-gray-300 mb-4 sm:mb-6 overflow-x-auto no-scrollbar scroll-smooth">
             <button
                 onClick={() => setActiveTab(Tab.DASHBOARD)}
                 aria-current={activeTab === Tab.DASHBOARD ? 'page' : undefined}
@@ -465,7 +467,7 @@ export default function App() {
               <>
                   {activeTab === Tab.LIST && (
                       <>
-                      <div className="flex justify-between items-center mb-4">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
                           <h2 className="text-lg font-bold text-gray-700">
                           {user.role === UserRole.USER ? 'Mis Tickets' : 'Cola de Tickets'}
                           </h2>

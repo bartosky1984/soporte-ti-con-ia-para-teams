@@ -58,7 +58,7 @@ export const TicketList: React.FC<TicketListProps> = ({
           >
             <div className="flex justify-between items-start">
               <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-1">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className="text-xs font-mono text-gray-400" aria-label={`ID del ticket ${ticket.id}`}>#{ticket.id}</span>
                   <span className={`px-2 py-0.5 text-xs rounded-full border font-medium ${statusColors[ticket.estado]}`} aria-label={`Estado: ${ticket.estado}`}>
                     {ticket.estado}
@@ -119,7 +119,8 @@ export const TicketList: React.FC<TicketListProps> = ({
                       if (diffHours > 24) {
                         return (
                           <span className="flex items-center gap-1 text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-bold" title="Excede el SLA de 24h">
-                            <ICONS.AlertTriangle size={10} /> SLA ALERT
+                            <ICONS.AlertTriangle size={10} className="shrink-0" />
+                            <span className="whitespace-nowrap">SLA<span className="hidden sm:inline"> ALERT</span></span>
                           </span>
                         );
                       }
@@ -147,14 +148,15 @@ export const TicketList: React.FC<TicketListProps> = ({
                 </button>
               </div>
               
-              <div className="flex flex-col space-y-2 ml-4 items-end">
+              <div className="flex flex-col space-y-2 ml-2 sm:ml-4 items-end shrink-0">
                  <button 
                     onClick={() => onSelectTicket(ticket)}
-                    className={`p-1 flex items-center text-xs mb-1 focus:outline-none focus:ring-1 focus:ring-teams-purple rounded ${hasUnread ? 'text-blue-600 font-semibold' : 'text-gray-400 hover:text-teams-purple'}`}
+                    className={`p-1 flex items-center text-xs mb-1 focus:outline-none focus:ring-1 focus:ring-teams-purple rounded transition-colors ${hasUnread ? 'text-blue-600 font-semibold' : 'text-gray-400 hover:text-teams-purple'}`}
                     aria-label={`Ver conversación del ticket #${ticket.id}`}
                  >
-                   <ICONS.MessageCircle aria-hidden="true" />
-                   <span className="ml-1">Ver</span>
+                   <ICONS.MessageCircle size={16} className="shrink-0" aria-hidden="true" />
+                   <span className="ml-1 hidden sm:inline">Ver</span>
+                   <span className="ml-1 sm:hidden">Chat</span>
                  </button>
 
                  {/* Only show status action buttons if user is Admin or Technician */}
@@ -163,7 +165,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                      {ticket.estado === TicketStatus.PENDING && (
                        <button
                          onClick={() => onStatusChange(ticket.id, TicketStatus.IN_PROGRESS)}
-                         className="text-xs bg-teams-purple text-white px-3 py-1 rounded hover:bg-opacity-90 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-purple-400"
+                         className="text-[10px] sm:text-xs bg-teams-purple text-white px-2 sm:px-3 py-1 rounded hover:bg-opacity-90 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-purple-400"
                          aria-label={`Comenzar trabajo en ticket #${ticket.id}`}
                        >
                          Comenzar
@@ -173,7 +175,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                      {ticket.estado === TicketStatus.IN_PROGRESS && (
                        <button
                          onClick={() => onStatusChange(ticket.id, TicketStatus.RESOLVED)}
-                         className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-green-400"
+                         className="text-[10px] sm:text-xs bg-green-600 text-white px-2 sm:px-3 py-1 rounded hover:bg-green-700 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-green-400"
                          aria-label={`Resolver ticket #${ticket.id}`}
                        >
                          Resolver
@@ -183,7 +185,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                      {ticket.estado === TicketStatus.RESOLVED && (
                        <button
                          onClick={() => onStatusChange(ticket.id, TicketStatus.PENDING)}
-                         className="text-xs text-gray-500 hover:text-gray-700 underline whitespace-nowrap focus:outline-none focus:ring-1 focus:ring-gray-400"
+                         className="text-[10px] sm:text-xs text-gray-500 hover:text-gray-700 underline whitespace-nowrap focus:outline-none focus:ring-1 focus:ring-gray-400"
                          aria-label={`Reabrir ticket #${ticket.id}`}
                        >
                          Reabrir

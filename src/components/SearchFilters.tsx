@@ -69,7 +69,7 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({ onFilterChange, cu
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm mb-4">
-      <div className="p-3 flex items-center gap-3">
+      <div className="p-3 flex flex-col xs:flex-row items-stretch xs:items-center gap-3">
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
             <ICONS.Search size={18} aria-hidden="true" />
@@ -79,15 +79,15 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({ onFilterChange, cu
             name="searchText"
             value={filters.searchText}
             onChange={handleChange}
-            placeholder="Buscar por descripción, ID o nombre..."
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-teams-purple focus:border-teams-purple sm:text-sm transition-all"
+            placeholder="Buscar tickets..."
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-teams-purple focus:border-teams-purple text-sm transition-all"
             aria-label="Buscar tickets"
           />
         </div>
         
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+          className={`flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
             isExpanded ? 'bg-teams-purple text-white' : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
           }`}
           aria-expanded={isExpanded}
