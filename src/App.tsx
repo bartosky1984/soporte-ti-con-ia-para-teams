@@ -236,6 +236,14 @@ export default function App() {
       return ticket.userId === user.id;
     }
 
+    // SECURITY: Technicians should ONLY see tickets assigned to them OR unassigned tickets
+    // (Lead Technicians and Admins can still see everything for management)
+    if (user.role === UserRole.TECHNICIAN) {
+      const isAssignedToMe = ticket.technicianId === user.id;
+      const isUnassigned = !ticket.technicianId;
+      if (!isAssignedToMe && !isUnassigned) return false;
+    }
+
     if (!filters) return true;
 
     // Automatic department filter for technicians if no manual classification filter is active
