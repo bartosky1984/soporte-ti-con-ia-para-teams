@@ -132,31 +132,32 @@ export const TicketList: React.FC<TicketListProps> = ({
                     }`}
                     aria-label={`Ver conversación del ticket #${ticket.id}: ${messageCount} mensajes, ${ticket.unreadCount || 0} nuevos`}
                  >
-                    <div className="relative">
-                       {/* Chat Icon - Distinct states for read/unread/none */}
+                    <div className="relative flex items-center">
+                       {/* Chat Icon - ULTRA VISIBLE ALERT (RED/ORANGE) */}
                        <svg 
                          xmlns="http://www.w3.org/2000/svg" 
-                         width="20" 
-                         height="20" 
+                         width="22" 
+                         height="22" 
                          viewBox="0 0 24 24" 
-                         fill={hasUnread ? "#2563EB" : (ticket.hasMessages ? "#9CA3AF" : "none")} 
-                         stroke={hasUnread ? "#2563EB" : (ticket.hasMessages ? "#6B7280" : "currentColor")} 
+                         fill={hasUnread ? "#EF4444" : (ticket.hasMessages ? "#9CA3AF" : "none")} 
+                         stroke={hasUnread ? "#EF4444" : (ticket.hasMessages ? "#6B7280" : "currentColor")} 
                          strokeWidth={hasUnread ? "2.5" : "2"} 
                          strokeLinecap="round" 
                          strokeLinejoin="round"
                          aria-hidden="true"
-                         className={`shrink-0 transition-all duration-300 ${hasUnread ? "drop-shadow-sm" : (ticket.hasMessages ? "opacity-100" : "opacity-40")}`}
+                         className={`shrink-0 transition-all duration-300 ${hasUnread ? "drop-shadow-md animate-pulse" : (ticket.hasMessages ? "opacity-100" : "opacity-30")}`}
                        >
                          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                        </svg>
-                      {hasUnread && (
-                        <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-500 text-[8px] text-white ring-1 ring-white">
-                          {ticket.unreadCount}
-                        </span>
-                      )}
-                   </div>
-                   <span className="ml-1.5 hidden sm:inline">Chat</span>
-                   <span className="ml-1.5 sm:hidden"></span>
+                       {hasUnread && (
+                         <div className="absolute -top-2 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[9px] text-white font-black ring-2 ring-white shadow-lg animate-bounce-slow">
+                           {ticket.unreadCount}
+                         </div>
+                       )}
+                    </div>
+                    {hasUnread && <span className="ml-2 text-[10px] font-black text-red-600 tracking-tighter animate-pulse">NUEVO</span>}
+                    <span className={`ml-1.5 hidden sm:inline ${hasUnread ? "text-red-600 font-black" : ""}`}>Chat</span>
+                    <span className="ml-1.5 sm:hidden"></span>
                  </button>
 
                  {/* Only show status action buttons if user is Admin or Technician */}
