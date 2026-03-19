@@ -78,31 +78,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                     </span>
                   )}
                   
-                  {/* Message Indicators */}
-                  {messageCount > 0 && (
-                    <span className={`flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                      hasUnread 
-                        ? 'bg-blue-100 text-blue-700' 
-                        : 'bg-gray-100 text-gray-500'
-                    }`} aria-label={`${messageCount} mensajes totales, ${hasUnread ? `${ticket.unreadCount} nuevos` : 'ninguno nuevo'}`}>
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        width="14" 
-                        height="14" 
-                        viewBox="0 0 24 24" 
-                        fill={hasUnread ? "currentColor" : "none"} 
-                        stroke="currentColor" 
-                        strokeWidth="2" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                      >
-                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                      </svg>
-                      <span>{messageCount}</span>
-                      {hasUnread && <span className="text-[10px] font-bold ml-1" aria-hidden="true">({ticket.unreadCount} nuevos)</span>}
-                    </span>
-                  )}
+
                   
                   {ticket.hasAttachments && (
                     <span className="text-gray-400" title="Contiene archivos adjuntos">
@@ -116,9 +92,9 @@ export const TicketList: React.FC<TicketListProps> = ({
                       const createdDate = new Date(ticket.fecha).getTime();
                       const now = Date.now();
                       const diffHours = (now - createdDate) / (1000 * 60 * 60);
-                      if (diffHours > 24) {
+                      if (diffHours > 48) {
                         return (
-                          <span className="flex items-center gap-1 text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-bold" title="Excede el SLA de 24h">
+                          <span className="flex items-center gap-1 text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-bold" title="Excede el SLA de 48h">
                             <ICONS.AlertTriangle size={10} className="shrink-0" />
                             <span className="whitespace-nowrap">SLA<span className="hidden sm:inline"> ALERT</span></span>
                           </span>
@@ -151,12 +127,37 @@ export const TicketList: React.FC<TicketListProps> = ({
               <div className="flex flex-col space-y-2 ml-2 sm:ml-4 items-end shrink-0">
                  <button 
                     onClick={() => onSelectTicket(ticket)}
-                    className={`p-1 flex items-center text-xs mb-1 focus:outline-none focus:ring-1 focus:ring-teams-purple rounded transition-colors ${hasUnread ? 'text-blue-600 font-semibold' : 'text-gray-400 hover:text-teams-purple'}`}
-                    aria-label={`Ver conversación del ticket #${ticket.id}`}
+                    className={`p-1 flex items-center text-xs mb-1 focus:outline-none focus:ring-1 focus:ring-teams-purple rounded transition-all transform hover:scale-110 ${
+                      hasUnread 
+                        ? 'text-blue-600 font-bold' 
+                        : 'text-gray-400 hover:text-teams-purple'
+                    }`}
+                    aria-label={`Ver conversación del ticket #${ticket.id}: ${messageCount} mensajes, ${ticket.unreadCount || 0} nuevos`}
                  >
-                   <ICONS.MessageCircle size={16} className="shrink-0" aria-hidden="true" />
-                   <span className="ml-1 hidden sm:inline">Ver</span>
-                   <span className="ml-1 sm:hidden">Chat</span>
+                   <div className="relative">
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        width="18" 
+                        height="18" 
+                        viewBox="0 0 24 24" 
+                        fill={hasUnread ? "#2563EB" : "none"} 
+                        stroke={hasUnread ? "#2563EB" : "currentColor"} 
+                        strokeWidth="2" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                        className="shrink-0"
+                      >
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                      </svg>
+                      {hasUnread && (
+                        <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-500 text-[8px] text-white ring-1 ring-white">
+                          {ticket.unreadCount}
+                        </span>
+                      )}
+                   </div>
+                   <span className="ml-1.5 hidden sm:inline">Chat</span>
+                   <span className="ml-1.5 sm:hidden"></span>
                  </button>
 
                  {/* Only show status action buttons if user is Admin or Technician */}
