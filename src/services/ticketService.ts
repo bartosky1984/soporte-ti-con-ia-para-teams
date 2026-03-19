@@ -64,11 +64,17 @@ export const ticketService = {
           }, {});
 
               tickets = tickets.map(t => {
-                const ticketComments = (allComments || []).filter(c => c.ticketId === t.id);
-                const lastReadTime = readReceipts[t.id] || 0;
-                const unreadCount = ticketComments.filter(c => 
-                  c.userId !== currentUserId && new Date(c.timestamp).getTime() > lastReadTime
-                ).length;
+                const currentTicketId = Number(t.id);
+                const ticketComments = allComments.filter(c => Number(c.ticketId) === currentTicketId);
+                const lastReadTime = readReceipts[currentTicketId] || 0;
+                
+                const unreadForThisTicket = ticketComments.filter(c => 
+                  String(c.userId) !== String(currentUserId) && 
+                  new Date(c.timestamp).getTime() > lastReadTime
+                );
+                
+                const unreadCount = unreadForThisTicket.length;
+                const hasMessages = ticketComments.length > 0;
                 
                 if (unreadCount > 0) {
                   console.log(`🎯 [TicketService] Ticket #${t.id} has ${unreadCount} unread. Last read: ${new Date(lastReadTime).toISOString()}`);

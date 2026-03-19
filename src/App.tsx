@@ -154,10 +154,11 @@ export default function App() {
         // Optimize: instead of full refetch, update the unread count and message status locally
         if (payload.new && payload.new.ticketId) {
           const comment = payload.new;
-          const isFromMe = comment.userId === user.id;
+          const isFromMe = String(comment.userId) === String(user.id);
+          const targetTicketId = Number(comment.ticketId);
           
           setTickets(prev => prev.map(t => {
-            if (t.id === comment.ticketId) {
+            if (Number(t.id) === targetTicketId) {
               const newUnreadCount = isFromMe ? (t.unreadCount || 0) : (t.unreadCount || 0) + 1;
               return {
                 ...t,
