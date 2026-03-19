@@ -699,21 +699,23 @@ export const ticketService = {
     };
   },
 
-  subscribeToAllComments: (callback: () => void) => {
+  subscribeToAllComments: (callback: (payload: any) => void) => {
     if (!isDbEnabled) return () => {};
 
     const channel = supabase
-      .channel('all-comments')
+      .channel('global-comments')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'comments'
         },
-        () => callback()
+        (payload) => callback(payload)
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`🔌 [TicketService] Realtime channel 'global-comments' status:`, status);
+      });
 
     return () => {
       supabase.removeChannel(channel);

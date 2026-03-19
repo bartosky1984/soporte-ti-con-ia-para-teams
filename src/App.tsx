@@ -148,9 +148,33 @@ export default function App() {
       });
 
       // Subscribe to All Comments to update unread counts in the list
-      const unsubscribeAllComments = ticketService.subscribeToAllComments(() => {
-        console.log("💬 [App] New comment detected, refreshing tickets...");
-        fetchTickets();
+      const unsubscribeAllComments = ticketService.subscribeToAllComments((payload) => {
+        console.log("💬 [App] New comment detected:", payload);
+        
+        // Optimize: instead of full refetch, update the unread count and message status locally
+        if (payload.new && payload.new.ticketId) {
+          const comment = payload.new;
+          const isFromMe = comment.userId === user.id;
+          
+          setTickets(prev => prev.map(t => {
+            if (t.id === comment.ticketId) {
+              const newUnreadCount = isFromMe ? (t.unreadCount || 0) : (t.unreadCount || 0) + 1;
+              return {
+                ...t,
+                unreadCount: newUnreadCount,
+                messageCount: (t.messageCount || 0) + 1,
+                hasMessages: true
+              };
+            }
+            return t;
+          }));
+
+          // Also update selected ticket if open
+          if (selectedTicket?.id === comment.ticketId) {
+             // We could mark as read here if the user is currently looking at it
+             // but it's safer to let the TicketDetail handle its own state
+          }
+        }
       });
 
       return () => {

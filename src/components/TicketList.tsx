@@ -64,15 +64,15 @@ export const TicketList: React.FC<TicketListProps> = ({
                     {ticket.estado}
                   </span>
 
-                  {/* SLA Alert Indicator - Moved here between Type and Priority/Chat - Only for staff */}
-                  {canManage && ticket.estado !== TicketStatus.RESOLVED && (
+                  {/* SLA Alert Indicator - Only for staff and only for PENDING tickets */}
+                  {canManage && ticket.estado === TicketStatus.PENDING && (
                     (() => {
                       const createdDate = new Date(ticket.fecha).getTime();
                       const now = Date.now();
                       const diffHours = (now - createdDate) / (1000 * 60 * 60);
                       if (diffHours > 48) {
                         return (
-                          <span className="flex items-center gap-1 text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-bold" title="Excede el SLA de 48h">
+                          <span className="flex items-center gap-1 text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-bold" title="Excede el SLA de 48h - Pendiente de atender">
                             <ICONS.AlertTriangle size={10} className="shrink-0" />
                             <span className="whitespace-nowrap">SLA<span className="hidden sm:inline"> ALERT</span></span>
                           </span>
