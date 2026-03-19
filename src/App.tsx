@@ -340,13 +340,25 @@ export default function App() {
           </div>
         )}
         {isOnline && !isSyncing && syncService.getQueueCount() > 0 && (
-          <button 
-            onClick={handleSync}
-            className="bg-amber-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 hover:bg-amber-600 transition-colors"
-          >
-            <RefreshCcw size={18} />
-            <span className="text-sm font-medium">{syncService.getQueueCount()} pendientes</span>
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={handleSync}
+              className="bg-amber-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 hover:bg-amber-600 transition-colors"
+            >
+              <RefreshCcw size={18} />
+              <span className="text-sm font-medium">{syncService.getQueueCount()} pendientes</span>
+            </button>
+            <button 
+              onClick={() => {
+                localStorage.removeItem('teams_sync_queue');
+                fetchTickets();
+              }}
+              className="bg-red-200 text-red-700 px-3 py-2 rounded-full shadow-md text-xs font-bold hover:bg-red-300 transition-colors"
+              title="Borrar tareas pendientes que no se pueden enviar"
+            >
+              Borrar
+            </button>
+          </div>
         )}
       </div>
 

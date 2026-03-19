@@ -70,8 +70,8 @@ export const syncService = {
         console.log(`[SyncService] Successfully synced item: ${item.id}`);
       } catch (error) {
         console.error(`[SyncService] Failed to sync item: ${item.id}`, error);
-        // Stop processing if we hit an error to maintain order
-        break;
+        // Continue with the next items even if one fails
+        continue;
       }
     }
   },
