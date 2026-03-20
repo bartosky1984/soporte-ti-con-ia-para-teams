@@ -60,6 +60,7 @@ Este documento detalla los pasos seguidos y los hitos pendientes para completar 
 - [ ] **Estabilización de Asistente IA**: Depuración de errores en la integración con Gemini y mejora de manejo de errores.
 - [ ] **IA Predictiva**: Sugerencia automática de técnicos basada en la carga de trabajo y especialidad.
 - [ ] **Multilenguaje**: Soporte completo para inglés y otros idiomas.
+- [ ] **Cola de Espera (Ticket Queue)**: Sistema para que el usuario sepa en todo momento cuántos tickets tiene delante en la cola de atención.
 
 ---
 *Este roadmap es un documento vivo y se actualizará a medida que avancemos en los objetivos.*
