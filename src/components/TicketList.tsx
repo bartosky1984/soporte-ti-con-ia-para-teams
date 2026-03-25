@@ -1,6 +1,6 @@
 import React from 'react';
 import { Ticket, TicketStatus, User, UserRole } from '../types';
-import { ICONS } from '../constants';
+import { ICONS, PRIORITY_COLORS } from '../constants';
 
 interface TicketListProps {
   tickets: Ticket[];
@@ -54,7 +54,11 @@ export const TicketList: React.FC<TicketListProps> = ({
         return (
           <li 
             key={ticket.id} 
-            className={`bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow duration-200 ${hasUnread ? 'border-l-4 border-l-blue-500' : 'border-gray-200'}`}
+            className={`bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow duration-200 ${
+              ticket.prioridad === 'Crítica' ? 'border-l-4 border-l-purple-500' :
+              hasUnread ? 'border-l-4 border-l-blue-500' : 
+              'border-gray-200'
+            }`}
           >
             <div className="flex justify-between items-start">
               <div className="flex-1">
@@ -83,39 +87,39 @@ export const TicketList: React.FC<TicketListProps> = ({
                   )}
                   
                   {ticket.prioridad && (
-                    <span className={`px-2 py-0.5 text-[10px] rounded font-bold uppercase ${
-                      ticket.prioridad === 'Crítica' ? 'bg-purple-100 text-purple-700' :
-                      ticket.prioridad === 'Alta' ? 'bg-orange-100 text-orange-700' :
-                      ticket.prioridad === 'Baja' ? 'bg-gray-100 text-gray-600' :
-                      'bg-blue-100 text-blue-700'
+                    <span className={`px-2 py-0.5 text-[10px] rounded font-bold uppercase border ${
+                      PRIORITY_COLORS[ticket.prioridad as keyof typeof PRIORITY_COLORS] || 'bg-blue-100 text-blue-700 border-blue-200'
                     }`} aria-label={`Prioridad: ${ticket.prioridad}`}>
                       {ticket.prioridad}
                     </span>
                   )}
-                  
-
                   
                   {ticket.hasAttachments && (
                     <span className="text-gray-400" title="Contiene archivos adjuntos">
                       <ICONS.Paperclip size={14} aria-hidden="true" />
                     </span>
                   )}
-
                 </div>
 
                 <button 
                   onClick={() => onSelectTicket(ticket)}
                   className={`text-left w-full focus:outline-none focus:ring-2 focus:ring-teams-purple rounded-md p-1 -ml-1 transition-all group`}
-                  aria-label={`Ver detalles del ticket #${ticket.id}: ${ticket.descripcion}`}
+                  aria-label={`Ver detalles del ticket #${ticket.id}: ${ticket.titulo || ticket.descripcion}`}
                 >
                   <h3 className={`text-gray-800 font-medium hover:text-teams-purple transition-colors ${hasUnread ? 'font-bold' : ''}`}>
-                    {ticket.descripcion}
+                    {ticket.titulo || ticket.descripcion}
                   </h3>
-                  <p className="text-xs text-gray-400 mt-1 flex items-center gap-2">
+                  <p className="text-xs text-gray-400 mt-1 flex flex-wrap items-center gap-2">
                     <span>{ticket.userName} · {new Date(ticket.fecha).toLocaleString()}</span>
                     {ticket.technicianName && (
                       <span className="flex items-center gap-1 text-teams-purple bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 whitespace-nowrap">
                         <ICONS.User size={10} aria-hidden="true" /> {ticket.technicianName}
+                      </span>
+                    )}
+                    {ticket.estado !== TicketStatus.RESOLVED && ticket.estimatedResolutionDate && (
+                      <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 whitespace-nowrap" title={`Fecha estimada de resolución: ${new Date(ticket.estimatedResolutionDate).toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}`}>
+                        <ICONS.Clock size={10} aria-hidden="true" />
+                        Est. {new Date(ticket.estimatedResolutionDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
                       </span>
                     )}
                   </p>
@@ -133,7 +137,6 @@ export const TicketList: React.FC<TicketListProps> = ({
                     aria-label={`Ver conversación del ticket #${ticket.id}: ${messageCount} mensajes, ${ticket.unreadCount || 0} nuevos`}
                  >
                     <div className="relative flex items-center">
-                       {/* Chat Icon - ULTRA VISIBLE ALERT (RED/ORANGE) */}
                        <svg 
                          xmlns="http://www.w3.org/2000/svg" 
                          width="22" 
@@ -157,17 +160,14 @@ export const TicketList: React.FC<TicketListProps> = ({
                     </div>
                     {hasUnread && <span className="ml-2 text-[10px] font-black text-red-600 tracking-tighter animate-pulse">NUEVO</span>}
                     <span className={`ml-1.5 hidden sm:inline ${hasUnread ? "text-red-600 font-black" : ""}`}>Chat</span>
-                    <span className="ml-1.5 sm:hidden"></span>
                  </button>
 
-                 {/* Only show status action buttons if user is Admin or Technician */}
                  {canManage && (
                   <div className="flex flex-col space-y-1">
                      {ticket.estado === TicketStatus.PENDING && (
                        <button
                          onClick={() => onStatusChange(ticket.id, TicketStatus.IN_PROGRESS)}
                          className="text-[10px] sm:text-xs bg-teams-purple text-white px-2 sm:px-3 py-1 rounded hover:bg-opacity-90 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-purple-400"
-                         aria-label={`Comenzar trabajo en ticket #${ticket.id}`}
                        >
                          Comenzar
                        </button>
@@ -177,7 +177,6 @@ export const TicketList: React.FC<TicketListProps> = ({
                        <button
                          onClick={() => onStatusChange(ticket.id, TicketStatus.RESOLVED)}
                          className="text-[10px] sm:text-xs bg-green-600 text-white px-2 sm:px-3 py-1 rounded hover:bg-green-700 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-green-400"
-                         aria-label={`Resolver ticket #${ticket.id}`}
                        >
                          Resolver
                        </button>
@@ -186,8 +185,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                      {ticket.estado === TicketStatus.RESOLVED && (
                        <button
                          onClick={() => onStatusChange(ticket.id, TicketStatus.PENDING)}
-                         className="text-[10px] sm:text-xs text-gray-500 hover:text-gray-700 underline whitespace-nowrap focus:outline-none focus:ring-1 focus:ring-gray-400"
-                         aria-label={`Reabrir ticket #${ticket.id}`}
+                         className="text-[10px] sm:text-xs text-gray-500 hover:text-gray-700 underline whitespace-nowrap"
                        >
                          Reabrir
                        </button>

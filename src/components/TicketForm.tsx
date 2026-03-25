@@ -5,12 +5,13 @@ import { geminiService } from '../services/geminiService';
 import { storageService } from '../services/storageService';
 
 interface TicketFormProps {
-  onSubmit: (data: { tipo: TicketType; descripcion: string; attachmentUrl?: string }) => Promise<void>;
+  onSubmit: (data: { tipo: TicketType; titulo: string; descripcion: string; attachmentUrl?: string }) => Promise<void>;
   onCancel: () => void;
 }
 
 export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) => {
   const [tipo, setTipo] = useState<TicketType>(TicketType.IT);
+  const [titulo, setTitulo] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -19,7 +20,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!descripcion.trim()) return;
+    if (!titulo.trim() || !descripcion.trim()) return;
 
     setIsSubmitting(true);
     try {
@@ -27,7 +28,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
       if (selectedFile) {
         attachmentUrl = await storageService.uploadFile(selectedFile) || undefined;
       }
-      await onSubmit({ tipo, descripcion, attachmentUrl });
+      await onSubmit({ tipo, titulo, descripcion, attachmentUrl });
     } finally {
       setIsSubmitting(false);
     }
@@ -56,6 +57,22 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSubmit, onCancel }) =>
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
+      </div>
+
+      <div className="mb-4">
+        <label htmlFor="ticket-title" className="block text-sm font-medium text-gray-700 mb-1">
+          Resumen del problema <span className="text-red-500" aria-hidden="true">*</span>
+        </label>
+        <input
+          id="ticket-title"
+          type="text"
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          maxLength={120}
+          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-teams-purple focus:outline-none bg-white text-gray-900 placeholder-gray-500"
+          placeholder="Ej: La impresora no conecta al WiFi"
+          aria-required="true"
+        />
       </div>
 
       <div className="mb-4">

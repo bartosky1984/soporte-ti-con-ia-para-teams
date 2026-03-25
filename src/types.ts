@@ -35,6 +35,7 @@ export interface Ticket {
   attachmentUrl?: string; // URL for ticket attachment
   attachment_url?: string; // Compatibility property for Supabase
   hasAttachments?: boolean; // Calculated: has file in ticket or any comment
+  estimatedResolutionDate?: string; // Orientative estimated resolution date (ISO string)
 }
 
 export interface ITHealthStats {

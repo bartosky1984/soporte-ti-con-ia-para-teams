@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Ticket, TicketStatus, TicketClassification, User, UserRole } from '../types';
 import { classificationService } from '../services/classificationService';
-import { ICONS } from '../constants';
+import { ICONS, PRIORITY_COLORS } from '../constants';
 
 interface KanbanBoardProps {
   tickets: Ticket[];
@@ -97,7 +97,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
     return (
       <Draggable key={ticket.id.toString()} draggableId={ticket.id.toString()} index={index} isDragDisabled={!canDrag}>
-        {(provided, snapshot) => (
+        {(provided: { innerRef: any; draggableProps: any; dragHandleProps: any }, snapshot: { isDragging: boolean }) => (
           <div
             ref={provided.innerRef}
             {...provided.draggableProps}
@@ -105,7 +105,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             onClick={() => onSelectTicket(ticket)}
             className={`bg-white p-3 rounded-xl shadow-sm border mb-3 transition-all ${
               snapshot.isDragging ? 'shadow-lg rotate-1 scale-[1.02] z-50' : 'hover:shadow-md'
-            } ${hasUnread ? 'border-l-4 border-l-teams-purple ring-1 ring-teams-purple/5' : 'border-gray-200'} ${
+            } ${
+              ticket.prioridad === 'Crítica' ? 'border-l-4 border-l-purple-500' : 
+              hasUnread ? 'border-l-4 border-l-teams-purple ring-1 ring-teams-purple/5' : 
+              'border-gray-200'
+            } ${
               !canDrag ? 'cursor-default opacity-85 hover:bg-gray-50' : 'cursor-grab bg-white'
             }`}
           >
@@ -114,9 +118,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 {!canDrag && isUser && <div title="Solo visualización"><ICONS.Shield size={10} className="text-gray-300" /></div>}
                 <span className="text-[10px] font-bold text-gray-400">#{ticket.id}</span>
               </div>
-              <span className="text-[9px] font-bold text-teams-purple bg-teams-purple/5 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                {ticket.tipo}
-              </span>
+              <div className="flex items-center gap-1.5">
+                {ticket.prioridad && (
+                  <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border uppercase ${PRIORITY_COLORS[ticket.prioridad as keyof typeof PRIORITY_COLORS] || 'bg-blue-100 text-blue-700 border-blue-200'}`}>
+                    {ticket.prioridad}
+                  </span>
+                )}
+                <span className="text-[9px] font-bold text-teams-purple bg-teams-purple/5 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  {ticket.tipo}
+                </span>
+              </div>
             </div>
             
             <h4 className={`text-sm text-gray-800 line-clamp-2 leading-snug mb-3 ${hasUnread ? 'font-bold' : 'font-medium'}`}>
@@ -183,7 +194,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
         
         <Droppable droppableId={id}>
-          {(provided, snapshot) => (
+          {(provided: { innerRef: any; droppableProps: any; placeholder: any }, snapshot: { isDraggingOver: boolean }) => (
             <div
               ref={provided.innerRef}
               {...provided.droppableProps}

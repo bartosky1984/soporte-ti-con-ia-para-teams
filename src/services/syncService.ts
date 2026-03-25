@@ -42,7 +42,7 @@ export const syncService = {
 
   processQueue: async (
     callbacks: {
-      onSyncTicket: (data: { tipo: TicketType; descripcion: string; attachmentUrl?: string }, user: User) => Promise<any>;
+      onSyncTicket: (data: { tipo: TicketType; titulo: string; descripcion: string; attachmentUrl?: string }, user: User) => Promise<any>;
       onSyncComment: (ticketId: number, text: string, user: User, attachmentUrl?: string) => Promise<any>;
     }
   ): Promise<void> => {

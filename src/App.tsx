@@ -186,10 +186,10 @@ export default function App() {
     }
   }, [user]);
 
-  const handleCreateTicket = async (data: { tipo: TicketType; descripcion: string; attachmentUrl?: string }) => {
+  const handleCreateTicket = async (data: { tipo: TicketType; titulo: string; descripcion: string; attachmentUrl?: string }) => {
     if (!user) return;
     try {
-      await ticketService.createTicket(data, user); // Pass user
+      await ticketService.createTicket(data, user);
       await fetchTickets();
       setActiveTab(Tab.LIST);
     } catch (e) {

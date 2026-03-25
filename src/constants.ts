@@ -8,6 +8,13 @@ export const ROLE_LABELS = {
   [UserRole.ADMIN]: 'Administrador'
 };
 
+export const PRIORITY_COLORS = {
+  'Baja': 'bg-gray-100 text-gray-700 border-gray-200',
+  'Media': 'bg-blue-100 text-blue-700 border-blue-200',
+  'Alta': 'bg-orange-100 text-orange-700 border-orange-200',
+  'Crítica': 'bg-purple-100 text-purple-700 border-purple-200'
+};
+
 export const TEAMS_THEME_COLOR = '#6264A7';
 
 type IconProps = { size?: number; className?: string; fill?: string };

@@ -61,6 +61,8 @@ Este documento detalla los pasos seguidos y los hitos pendientes para completar 
 - [ ] **IA Predictiva**: Sugerencia automática de técnicos basada en la carga de trabajo y especialidad.
 - [ ] **Multilenguaje**: Soporte completo para inglés y otros idiomas.
 - [ ] **Cola de Espera (Ticket Queue)**: Sistema para que el usuario sepa en todo momento cuántos tickets tiene delante en la cola de atención.
+- [ ] **Fecha de Finalización Orientativa**: Implementación de una fecha estimada de cierre para que el usuario sepa cuándo podría estar solucionado su ticket.
+
 
 ---
 *Este roadmap es un documento vivo y se actualizará a medida que avancemos en los objetivos.*

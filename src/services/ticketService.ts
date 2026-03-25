@@ -32,6 +32,18 @@ const DEFAULT_TICKETS: Ticket[] = [
   }
 ];
 
+// Helper: calculate estimated resolution date based on priority
+const calculateEstimatedDate = (priority: 'Baja' | 'Media' | 'Alta' | 'Crítica'): string => {
+  const hoursMap: Record<string, number> = {
+    'Crítica': 4,
+    'Alta': 24,
+    'Media': 72,
+    'Baja': 168,
+  };
+  const hours = hoursMap[priority] ?? 72;
+  return new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+};
+
 export const ticketService = {
   getTickets: async (currentUserId?: string): Promise<Ticket[]> => {
     if (isDbEnabled) {
@@ -124,7 +136,7 @@ export const ticketService = {
     return tickets.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
   },
 
-  createTicket: async (data: { tipo: TicketType; descripcion: string; attachmentUrl?: string }, user: User): Promise<Ticket> => {
+  createTicket: async (data: { tipo: TicketType; titulo: string; descripcion: string; attachmentUrl?: string }, user: User): Promise<Ticket> => {
     if (isDbEnabled) {
       try {
         // Detect priority
@@ -146,13 +158,15 @@ export const ticketService = {
             const insertData = {
               userId: user.id,
               userName: user.name,
+              titulo: data.titulo,
               tipo: data.tipo,
               descripcion: data.descripcion,
               estado: TicketStatus.PENDING,
               prioridad: priority,
               fecha: new Date().toISOString(),
               attachmentUrl: data.attachmentUrl,
-              attachment_url: data.attachmentUrl
+              attachment_url: data.attachmentUrl,
+              estimatedResolutionDate: calculateEstimatedDate(priority)
             };
 
             const { data: saved, error } = await supabase
@@ -184,12 +198,14 @@ export const ticketService = {
       id: Date.now(),
       userId: user.id,
       userName: user.name,
+      titulo: data.titulo,
       tipo: data.tipo,
       descripcion: data.descripcion,
       estado: TicketStatus.PENDING,
       prioridad: 'Media',
       fecha: new Date().toISOString(),
-      attachmentUrl: data.attachmentUrl
+      attachmentUrl: data.attachmentUrl,
+      estimatedResolutionDate: calculateEstimatedDate('Media')
     };
 
     await new Promise(resolve => setTimeout(resolve, 600));
@@ -288,9 +304,10 @@ export const ticketService = {
   updateTicketPriority: async (id: number, priority: string, user: User, oldPriority: string): Promise<Ticket | null> => {
     if (isDbEnabled) {
       try {
+        const newEstimated = calculateEstimatedDate(priority as 'Baja' | 'Media' | 'Alta' | 'Crítica');
         const { data, error } = await supabase
           .from('tickets')
-          .update({ prioridad: priority })
+          .update({ prioridad: priority, estimatedResolutionDate: newEstimated })
           .eq('id', id)
           .select()
           .single();
@@ -305,6 +322,37 @@ export const ticketService = {
       }
     }
     return null;
+  },
+
+  updateEstimatedResolutionDate: async (id: number, date: string, user: User): Promise<Ticket | null> => {
+    if (isDbEnabled) {
+      try {
+        const { data, error } = await supabase
+          .from('tickets')
+          .update({ estimatedResolutionDate: date })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        await ticketService.addAuditLog(id, user, 'ESTIMATED_DATE_CHANGE', '-', new Date(date).toLocaleDateString('es-ES'));
+        const raw = data as any;
+        return { ...raw, attachmentUrl: raw.attachmentUrl || raw.attachment_url } as Ticket;
+      } catch (e) {
+        console.error("Supabase updateEstimatedResolutionDate failed", e);
+      }
+    }
+
+    // LocalStorage fallback
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return null;
+    const tickets: Ticket[] = JSON.parse(stored);
+    const index = tickets.findIndex(t => t.id === id);
+    if (index === -1) return null;
+    tickets[index].estimatedResolutionDate = date;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+    await ticketService.addAuditLog(id, user, 'ESTIMATED_DATE_CHANGE', '-', new Date(date).toLocaleDateString('es-ES'));
+    return tickets[index];
   },
 
   addAuditLog: async (ticketId: number, user: User, action: string, oldValue: string, newValue: string): Promise<void> => {

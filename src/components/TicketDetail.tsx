@@ -4,7 +4,7 @@ import { ticketService } from '../services/ticketService';
 import { classificationService } from '../services/classificationService';
 import { userService } from '../services/userService';
 import { supabase } from '../services/supabaseClient';
-import { ICONS } from '../constants';
+import { ICONS, PRIORITY_COLORS } from '../constants';
 import { storageService } from '../services/storageService';
 
 interface TicketDetailProps {
@@ -21,12 +21,7 @@ const statusColors = {
   [TicketStatus.RESOLVED]: 'bg-green-100 text-green-800 border-green-200',
 };
 
-const priorityColors = {
-  'Baja': 'bg-gray-100 text-gray-700',
-  'Media': 'bg-blue-100 text-blue-700',
-  'Alta': 'bg-orange-100 text-orange-700',
-  'Crítica': 'bg-purple-100 text-purple-700 border-purple-200',
-};
+
 
 export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser, onClose, onStatusChange, onTicketUpdate }) => {
   const [comments, setComments] = useState<TicketComment[]>([]);
@@ -40,6 +35,10 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
   const [assigning, setAssigning] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [estimatedDate, setEstimatedDate] = useState<string>(
+    ticket.estimatedResolutionDate ? new Date(ticket.estimatedResolutionDate).toISOString().split('T')[0] : ''
+  );
+  const [savingDate, setSavingDate] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -147,6 +146,17 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
     }
   };
 
+  const handlePriorityChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newPriority = e.target.value as 'Baja' | 'Media' | 'Alta' | 'Crítica';
+    const oldPriority = ticket.prioridad || 'Media';
+    if (newPriority === oldPriority) return;
+    const updatedTicket = await ticketService.updateTicketPriority(ticket.id, newPriority, currentUser, oldPriority);
+    if (updatedTicket && onTicketUpdate) {
+      onTicketUpdate(updatedTicket);
+      await loadAudits();
+    }
+  };
+
   const handleAssignTechnician = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const techId = e.target.value;
     if (!techId) return;
@@ -174,6 +184,23 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       return;
     }
     onStatusChange(ticket.id, TicketStatus.RESOLVED);
+  };
+
+  const handleSaveEstimatedDate = async () => {
+    if (!estimatedDate) return;
+    setSavingDate(true);
+    try {
+      const isoDate = new Date(estimatedDate).toISOString();
+      const updated = await ticketService.updateEstimatedResolutionDate(ticket.id, isoDate, currentUser);
+      if (updated && onTicketUpdate) {
+        onTicketUpdate(updated);
+        await loadAudits();
+      }
+    } catch (e) {
+      console.error('Error saving estimated date', e);
+    } finally {
+      setSavingDate(false);
+    }
   };
 
   return (
@@ -250,7 +277,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                 Creado por <strong>{ticket.userName}</strong> el {new Date(ticket.fecha).toLocaleString()}
               </span>
               {ticket.prioridad && (
-                <span className={`px-2 py-0.5 text-[10px] rounded font-bold uppercase ${priorityColors[ticket.prioridad]}`}>
+                <span className={`px-2 py-0.5 text-[10px] rounded font-bold uppercase border ${PRIORITY_COLORS[ticket.prioridad as keyof typeof PRIORITY_COLORS] || 'bg-blue-100 text-blue-700 border-blue-200'}`}>
                   {ticket.prioridad}
                 </span>
               )}
@@ -325,6 +352,64 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                     <option value={TicketType.GENERAL}>Servicios Generales</option>
                   </select>
                 </div>
+              )}
+
+              {/* Priority Selector (Lead Tech / Admin only) */}
+              {canAssign && (
+                <div className="flex items-center gap-2">
+                  <label htmlFor="priority-select" className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                    <ICONS.AlertTriangle size={12} aria-hidden="true" /> Prioridad:
+                  </label>
+                  <select
+                    id="priority-select"
+                    value={ticket.prioridad || 'Media'}
+                    onChange={handlePriorityChange}
+                    className={`text-xs border rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-teams-purple font-bold ${
+                      ticket.prioridad === 'Crítica' ? 'border-purple-300 text-purple-700 bg-purple-50' :
+                      ticket.prioridad === 'Alta'    ? 'border-orange-300 text-orange-700 bg-orange-50' :
+                      ticket.prioridad === 'Baja'    ? 'border-gray-300 text-gray-600' :
+                      'border-blue-300 text-blue-700 bg-blue-50'
+                    }`}
+                    aria-label="Cambiar prioridad del ticket"
+                  >
+                    <option value="Baja">Baja</option>
+                    <option value="Media">Media</option>
+                    <option value="Alta">Alta</option>
+                    <option value="Crítica">Crítica</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Estimated Resolution Date - EDITABLE for techs, READ-ONLY for users */}
+              {ticket.estado !== TicketStatus.RESOLVED && (
+                canManage ? (
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="estimated-date-input" className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                      <ICONS.Clock size={12} aria-hidden="true" /> Fecha estimada:
+                    </label>
+                    <input
+                      id="estimated-date-input"
+                      type="date"
+                      value={estimatedDate}
+                      onChange={(e) => setEstimatedDate(e.target.value)}
+                      className="text-xs border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-teams-purple"
+                      aria-label="Fecha estimada de resolucíon del ticket"
+                    />
+                    <button
+                      onClick={handleSaveEstimatedDate}
+                      disabled={savingDate || !estimatedDate}
+                      className="text-xs bg-teams-purple text-white px-2 py-1 rounded hover:bg-opacity-90 disabled:opacity-50 transition-colors"
+                      aria-label="Guardar fecha estimada"
+                    >
+                      {savingDate ? '...' : 'Guardar'}
+                    </button>
+                  </div>
+                ) : ticket.estimatedResolutionDate ? (
+                  <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 text-blue-700 px-2.5 py-1 rounded-md text-xs font-medium" role="status" aria-label={`Fecha estimada de resolución: ${new Date(ticket.estimatedResolutionDate).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`}>
+                    <ICONS.Clock size={12} aria-hidden="true" />
+                    <span>Est. resolucín: <strong>{new Date(ticket.estimatedResolutionDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}</strong></span>
+                  </div>
+                ) : null
               )}
             </div>
           </div>
