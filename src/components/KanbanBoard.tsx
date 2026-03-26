@@ -124,6 +124,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     {ticket.prioridad}
                   </span>
                 )}
+                {ticket.estado === TicketStatus.PENDING && ticket.queuePosition !== undefined && (
+                  <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border uppercase flex items-center gap-[2px] ${
+                    ticket.queuePosition <= 2 
+                      ? 'bg-green-100 text-green-700 border-green-200 animate-pulse drop-shadow-[0_0_2px_rgba(34,197,94,0.3)]' 
+                      : 'bg-blue-100 text-blue-700 border-blue-200'
+                  }`} aria-label={`Posición en cola: ${ticket.queuePosition} tickets delante`}>
+                    <ICONS.List size={8} />
+                    {ticket.queuePosition === 0 ? 'Siguiente' : `${ticket.queuePosition} delante`}
+                  </span>
+                )}
                 <span className="text-[9px] font-bold text-teams-purple bg-teams-purple/5 px-2 py-0.5 rounded-full uppercase tracking-wider">
                   {ticket.tipo}
                 </span>

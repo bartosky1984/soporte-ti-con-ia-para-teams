@@ -94,6 +94,19 @@ export const TicketList: React.FC<TicketListProps> = ({
                     </span>
                   )}
                   
+                  {ticket.estado === TicketStatus.PENDING && ticket.queuePosition !== undefined && (
+                    <span className={`px-2 py-0.5 text-[10px] rounded font-bold border flex items-center gap-1 shadow-sm ${
+                      ticket.queuePosition <= 2 
+                        ? 'bg-green-100 text-green-700 border-green-200 animate-pulse' 
+                        : 'bg-blue-100 text-blue-700 border-blue-200'
+                    }`} aria-label={`Posición en cola: ${ticket.queuePosition} tickets delante`}>
+                      <ICONS.List size={10} />
+                      {ticket.queuePosition === 0 
+                        ? 'Siguiente en ser atendido' 
+                        : `${ticket.queuePosition} ticket${ticket.queuePosition > 1 ? 's' : ''} delante`}
+                    </span>
+                  )}
+                  
                   {ticket.hasAttachments && (
                     <span className="text-gray-400" title="Contiene archivos adjuntos">
                       <ICONS.Paperclip size={14} aria-hidden="true" />

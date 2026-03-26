@@ -23,7 +23,8 @@ export const userService = {
         id: profileId, 
         name: role === UserRole.USER ? 'Empleado Demo' : 'Usuario Pro', 
         email: `${role.toLowerCase()}@company.com`, 
-        role 
+        role,
+        specialties: []
       };
     }
 
@@ -31,7 +32,8 @@ export const userService = {
       id: data.id,
       name: data.name,
       email: data.email,
-      role: data.role as UserRole
+      role: data.role as UserRole,
+      specialties: data.specialties || []
     };
   },
 
@@ -51,7 +53,8 @@ export const userService = {
         id: d.id,
         name: d.name,
         email: d.email,
-        role: d.role as UserRole
+        role: d.role as UserRole,
+        specialties: d.specialties || []
       }));
     } catch (e) {
       console.error("❌ [UserService] Supabase getAllUsers failure:", e);
@@ -71,7 +74,8 @@ export const userService = {
       id: d.id,
       name: d.name,
       email: d.email,
-      role: d.role as UserRole
+      role: d.role as UserRole,
+      specialties: d.specialties || []
     }));
   },
 
@@ -82,6 +86,21 @@ export const userService = {
       .eq('id', userId);
     
     if (error) throw error;
+  },
+
+  updateUserSpecialties: async (userId: string, specialties: string[]): Promise<void> => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ specialties })
+        .eq('id', userId);
+      
+      if (error) {
+        console.error("Failed to update specialties in Supabase:", error);
+      }
+    } catch (e) {
+      console.error("Error connecting to Supabase:", e);
+    }
   },
 
   addTechnician: async (name: string, email: string): Promise<User> => {

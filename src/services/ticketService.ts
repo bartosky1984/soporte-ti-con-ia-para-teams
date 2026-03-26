@@ -103,8 +103,16 @@ export const ticketService = {
                 };
               });
         }
-        
-        return tickets.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+        const withQueue = tickets.map(t => {
+          if (t.estado === TicketStatus.RESOLVED) return t;
+          const count = tickets.filter(other => 
+            other.tipo === t.tipo &&
+            other.estado !== TicketStatus.RESOLVED &&
+            new Date(other.fecha).getTime() < new Date(t.fecha).getTime()
+          ).length;
+          return { ...t, queuePosition: count };
+        });
+        return withQueue.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
       } catch (e) {
         console.error("Supabase getTickets failed, falling back to localStorage", e);
       }
@@ -133,7 +141,16 @@ export const ticketService = {
         return { ...ticket, unreadCount, hasMessages: ticketComments.length > 0, messageCount: ticketComments.length, hasAttachments };
       });
     }
-    return tickets.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    const withQueue = tickets.map(t => {
+      if (t.estado === TicketStatus.RESOLVED) return t;
+      const count = tickets.filter(other => 
+        other.tipo === t.tipo &&
+        other.estado !== TicketStatus.RESOLVED &&
+        new Date(other.fecha).getTime() < new Date(t.fecha).getTime()
+      ).length;
+      return { ...t, queuePosition: count };
+    });
+    return withQueue.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
   },
 
   createTicket: async (data: { tipo: TicketType; titulo: string; descripcion: string; attachmentUrl?: string }, user: User): Promise<Ticket> => {
@@ -359,9 +376,10 @@ export const ticketService = {
     if (isDbEnabled) {
       try {
         await supabase
-          .from('ticket_audit_logs')
+          .from('ticket_audits')
           .insert([{
             ticket_id: ticketId,
+            user_id: user.id,
             user_name: user.name,
             action: action,
             old_value: oldValue,
@@ -377,7 +395,7 @@ export const ticketService = {
     if (!isDbEnabled) return [];
     try {
       const { data, error } = await supabase
-        .from('ticket_audit_logs')
+        .from('ticket_audits')
         .select('*')
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: false });
@@ -596,6 +614,24 @@ export const ticketService = {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
     await ticketService.addAuditLog(id, user, 'TYPE_CHANGE', oldType, tipo);
     return tickets[index];
+  },
+
+  getQueuePosition: async (ticketId: number): Promise<number> => {
+    // Return number of unresolved tickets of same type created before this ticket
+    const tickets = await ticketService.getTickets();
+    const currentTicket = tickets.find(t => t.id === ticketId);
+    if (!currentTicket) return 0;
+    
+    // Only matters if ticket is not resolved
+    if (currentTicket.estado === TicketStatus.RESOLVED) return 0;
+    
+    const count = tickets.filter(t => 
+      t.tipo === currentTicket.tipo &&
+      t.estado !== TicketStatus.RESOLVED &&
+      new Date(t.fecha).getTime() < new Date(currentTicket.fecha).getTime()
+    ).length;
+    
+    return count;
   },
 
   assignTechnician: async (ticketId: number, technician: User): Promise<Ticket | null> => {

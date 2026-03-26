@@ -17,6 +17,16 @@ export const PRIORITY_COLORS = {
 
 export const TEAMS_THEME_COLOR = '#6264A7';
 
+export const SPECIALTIES = [
+  'Hardware',
+  'Software',
+  'Redes',
+  'Impresoras',
+  'Accesos y Cuentas',
+  'Telefonía',
+  'Todo'
+];
+
 type IconProps = { size?: number; className?: string; fill?: string };
 
 export const ICONS = {

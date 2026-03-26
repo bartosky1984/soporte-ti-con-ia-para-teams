@@ -6,6 +6,7 @@ import { userService } from '../services/userService';
 import { supabase } from '../services/supabaseClient';
 import { ICONS, PRIORITY_COLORS } from '../constants';
 import { storageService } from '../services/storageService';
+import { aiAssignmentService } from '../services/aiAssignmentService';
 
 interface TicketDetailProps {
   ticket: Ticket;
@@ -39,6 +40,9 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
     ticket.estimatedResolutionDate ? new Date(ticket.estimatedResolutionDate).toISOString().split('T')[0] : ''
   );
   const [savingDate, setSavingDate] = useState(false);
+  const [queuePosition, setQueuePosition] = useState<number | null>(null);
+  const [askingAI, setAskingAI] = useState(false);
+  const [aiSuggestionReason, setAiSuggestionReason] = useState<string | null>(null);
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -52,7 +56,8 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
         loadComments(),
         loadAudits(),
         loadClassifications(),
-        loadTechnicians()
+        loadTechnicians(),
+        loadQueuePosition()
       ]);
       setLoading(false);
     };
@@ -75,6 +80,15 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
   const loadComments = async () => {
     const data = await ticketService.getComments(ticket.id);
     setComments(data);
+  };
+
+  const loadQueuePosition = async () => {
+    if (ticket.estado === TicketStatus.PENDING) {
+      const pos = await ticketService.getQueuePosition(ticket.id);
+      setQueuePosition(pos);
+    } else {
+      setQueuePosition(null);
+    }
   };
 
   const loadAudits = async () => {
@@ -126,6 +140,32 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
+    }
+  };
+
+  const handleAskAI = async () => {
+    setAskingAI(true);
+    setAiSuggestionReason(null);
+    try {
+      const allPendingTickets = await ticketService.getTickets();
+      const recommendation = await aiAssignmentService.suggestTechnician(ticket, technicians, allPendingTickets);
+      
+      if (recommendation.recommendedTechnicianId) {
+        const selectedTech = technicians.find(t => t.id === recommendation.recommendedTechnicianId);
+        if (selectedTech) {
+          const updatedTicket = await ticketService.assignTechnician(ticket.id, selectedTech);
+          setAiSuggestionReason(recommendation.reason);
+          if (updatedTicket && onTicketUpdate) {
+            onTicketUpdate(updatedTicket);
+            await loadAudits();
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error al obtener sugerencia de la IA. Revisa la consola para más detalles.");
+    } finally {
+      setAskingAI(false);
     }
   };
 
@@ -243,6 +283,14 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
               <span className={`px-2 py-0.5 text-xs rounded-full border font-medium ${statusColors[ticket.estado]}`} aria-label={`Estado: ${ticket.estado}`}>
                 {ticket.estado}
               </span>
+              {queuePosition !== null && ticket.estado === TicketStatus.PENDING && (
+                <span className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-blue-100 text-blue-700 border border-blue-200 flex items-center gap-1 shadow-sm" aria-label={`Posición en la cola: Hay ${queuePosition} tickets delante`}>
+                  <ICONS.List size={12} />
+                  {queuePosition === 0 
+                    ? 'Siguiente en ser atendido' 
+                    : `${queuePosition} ticket${queuePosition > 1 ? 's' : ''} delante`}
+                </span>
+              )}
             </div>
             <h2 className="font-semibold text-gray-800">{ticket.descripcion}</h2>
             
@@ -302,6 +350,23 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </select>
+                  
+                  {/* Funcionalidad de IA oculta para el MVP
+                  <button 
+                    onClick={handleAskAI}
+                    disabled={askingAI || assigning || technicians.length === 0}
+                    className="text-[10px] bg-gradient-to-r from-teams-purple to-indigo-500 text-white px-2 py-1 rounded-md hover:shadow-md flex items-center gap-1 transition-all focus:outline-none focus:ring-1 focus:ring-teams-purple disabled:opacity-50"
+                    title="Sugerencia Inteligente (IA)"
+                  >
+                    {askingAI ? <ICONS.Spinner size={10} /> : <ICONS.Sparkles size={10} />}
+                    {askingAI ? 'Pensando...' : 'Sugerencia'}
+                  </button>
+                  {aiSuggestionReason && (
+                    <div className="text-[10px] text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 max-w-[200px] truncate" title={aiSuggestionReason}>
+                      <strong>IA:</strong> {aiSuggestionReason}
+                    </div>
+                  )}
+                  */}
                 </div>
               ) : ticket.technicianName && (
                 <div className="flex items-center gap-2">

@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { User, UserRole, TicketClassification } from '../types';
 import { userService } from '../services/userService';
 import { classificationService } from '../services/classificationService';
-import { ICONS, ROLE_LABELS } from '../constants';
+import { ICONS, ROLE_LABELS, SPECIALTIES } from '../constants';
 
 export const AdminPanel: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [classifications, setClassifications] = useState<TicketClassification[]>([]);
   const [newClassificationName, setNewClassificationName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [editingSpecialties, setEditingSpecialties] = useState<string | null>(null);
+  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
 
   useEffect(() => {
     loadUsers();
@@ -32,6 +34,19 @@ export const AdminPanel: React.FC = () => {
       await loadUsers();
     } catch (e) {
       alert("Error al actualizar rol");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveSpecialties = async (userId: string) => {
+    setLoading(true);
+    try {
+      await userService.updateUserSpecialties(userId, selectedSpecialties);
+      setEditingSpecialties(null);
+      await loadUsers();
+    } catch (e) {
+      alert("Error al actualizar especialidades");
     } finally {
       setLoading(false);
     }
@@ -82,6 +97,9 @@ export const AdminPanel: React.FC = () => {
                     <th scope="col" className="px-4 py-3">Usuario</th>
                     <th scope="col" className="px-4 py-3">Email</th>
                     <th scope="col" className="px-4 py-3">Rol Actual</th>
+                    {/* Oculto para MVP
+                    <th scope="col" className="px-4 py-3">Especialidades</th>
+                    */}
                     <th scope="col" className="px-4 py-3 text-right">Acciones</th>
                   </tr>
                 </thead>
@@ -98,11 +116,63 @@ export const AdminPanel: React.FC = () => {
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
                           userItem.role === UserRole.ADMIN ? 'bg-purple-100 text-purple-700' : 
-                          userItem.role === UserRole.TECHNICIAN ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'
+                          userItem.role === UserRole.TECHNICIAN || userItem.role === UserRole.LEAD_TECHNICIAN ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'
                         }`}>
                           {ROLE_LABELS[userItem.role]}
                         </span>
                       </td>
+                      {/* Oculto para MVP
+                      <td className="px-4 py-3 min-w-[200px]">
+                        {(userItem.role === UserRole.TECHNICIAN || userItem.role === UserRole.LEAD_TECHNICIAN || userItem.role === UserRole.ADMIN) ? (
+                          editingSpecialties === userItem.id ? (
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap gap-1">
+                                {SPECIALTIES.map(spec => (
+                                  <label key={spec} className="flex items-center text-[10px] gap-1 cursor-pointer bg-gray-50 px-1 py-0.5 rounded border">
+                                    <input 
+                                      type="checkbox" 
+                                      checked={selectedSpecialties.includes(spec)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) setSelectedSpecialties([...selectedSpecialties, spec]);
+                                        else setSelectedSpecialties(selectedSpecialties.filter(s => s !== spec));
+                                      }}
+                                      className="w-3 h-3 text-teams-purple rounded border-gray-300 focus:ring-teams-purple"
+                                    />
+                                    {spec}
+                                  </label>
+                                ))}
+                              </div>
+                              <div className="flex gap-2 mt-2">
+                                <button onClick={() => handleSaveSpecialties(userItem.id)} disabled={loading} className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded font-medium hover:bg-green-200 focus:outline-none">Guardar</button>
+                                <button onClick={() => setEditingSpecialties(null)} disabled={loading} className="text-[10px] bg-gray-100 text-gray-700 px-2 py-1 rounded font-medium hover:bg-gray-200 focus:outline-none">Cancelar</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-start gap-1">
+                              <div className="flex flex-wrap gap-1">
+                                {(userItem.specialties || []).map(s => (
+                                  <span key={s} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[9px] font-bold rounded-full border border-indigo-100">{s}</span>
+                                ))}
+                                {(!userItem.specialties || userItem.specialties.length === 0) && (
+                                  <span className="text-[10px] text-gray-400 italic">Sin especialidades asignadas</span>
+                                )}
+                              </div>
+                              <button 
+                                onClick={() => {
+                                  setEditingSpecialties(userItem.id);
+                                  setSelectedSpecialties(userItem.specialties || []);
+                                }} 
+                                className="text-[10px] text-teams-purple hover:underline mt-1 focus:outline-none"
+                              >
+                                Editar especialidades
+                              </button>
+                            </div>
+                          )
+                        ) : (
+                          <span className="text-[10px] text-gray-400">-</span>
+                        )}
+                      </td>
+                      */}
                       <td className="px-4 py-3 text-right">
                         {userItem.role !== UserRole.ADMIN && (
                           <div className="flex justify-end gap-2">
